@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  body{margin:0;background:#d8d7dc;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+  *{box-sizing:border-box}
+  .dv-turn{padding:48px 52px 40px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+  .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 26px}
+  .dv-tid{font:600 10px -apple-system,sans-serif;padding:4px 8px;background:#1c1c1e;color:#fff;border-radius:6px;text-decoration:none;letter-spacing:.04em}
+  .dv-tname{font:590 13px/1.3 -apple-system,sans-serif;color:#1c1c1e}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:38px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:11px;scroll-margin-top:16px}
+  .dv-oid{font:600 10.5px -apple-system,sans-serif;padding:3px 8px;background:rgba(0,0,0,.07);color:#1c1c1e;border-radius:6px;text-decoration:none;letter-spacing:.03em}
+  .dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 11.5px/1.35 -apple-system,sans-serif;color:rgba(0,0,0,.5)}
+  .dv-opt:target .dv-oid{background:#007aff;color:#fff}
+  .dv-next{margin:26px 0 0;font:400 12px/1.6 -apple-system,sans-serif;color:rgba(0,0,0,.5)}
+  .dv-next a{color:#1c1c1e;text-decoration:none;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:5px}
+  a{color:#007aff}a:hover{color:#0060df}
+  @keyframes tlpulse{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes tlcaret{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .win{border-radius:11px;box-shadow:0 30px 70px -20px rgba(0,0,0,.45),0 0 0 .5px rgba(0,0,0,.16),0 8px 20px rgba(0,0,0,.12);overflow:hidden}
+  .tl{color:#1d1d1f}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Timelet — native macOS / SwiftUI direction</span></div>
+  <div class="dv-opts">
+
+    <!-- ============ 2a DASHBOARD (NavigationSplitView) ============ -->
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Main window · sidebar + grouped list</div>
+      <div class="win" style="width:880px;background:#ffffff">
+        <div style="display:flex;height:588px">
+          <!-- sidebar (vibrancy) -->
+          <div style="width:214px;background:rgba(246,246,248,.85);backdrop-filter:blur(30px);border-right:.5px solid rgba(0,0,0,.1);display:flex;flex-direction:column">
+            <!-- traffic lights over sidebar -->
+            <div style="height:52px;display:flex;align-items:center;gap:8px;padding:0 18px">
+              <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)"></span>
+              <span style="width:12px;height:12px;border-radius:50%;background:#febc2e;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)"></span>
+              <span style="width:12px;height:12px;border-radius:50%;background:#28c840;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)"></span>
+            </div>
+            <div style="padding:2px 12px 0;display:flex;flex-direction:column;gap:1px">
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;background:#007aff;color:#fff;font-size:13px;font-weight:500"><i data-lucide="calendar" style="width:15px;height:15px"></i>Today</div>
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><i data-lucide="calendar-days" style="width:15px;height:15px;color:#8e8e93"></i>This Week</div>
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><i data-lucide="chart-bar-big" style="width:15px;height:15px;color:#8e8e93"></i>Statistics</div>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:#8e8e93;padding:18px 21px 6px">Projects</div>
+            <div style="padding:0 12px;display:flex;flex-direction:column;gap:1px">
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><span style="width:10px;height:10px;border-radius:3px;background:#ff9500"></span>Timelet<span style="margin-left:auto;color:#a1a1a6;font-size:11px;font-variant-numeric:tabular-nums">3:55</span></div>
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><span style="width:10px;height:10px;border-radius:3px;background:#007aff"></span>Client-X<span style="margin-left:auto;color:#a1a1a6;font-size:11px;font-variant-numeric:tabular-nums">1:30</span></div>
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><span style="width:10px;height:10px;border-radius:3px;background:#af52de"></span>Learning<span style="margin-left:auto;color:#a1a1a6;font-size:11px;font-variant-numeric:tabular-nums">0:40</span></div>
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><span style="width:10px;height:10px;border-radius:3px;background:#34c759"></span>Admin<span style="margin-left:auto;color:#a1a1a6;font-size:11px;font-variant-numeric:tabular-nums">0:30</span></div>
+            </div>
+            <div style="margin-top:auto;padding:10px 12px;border-top:.5px solid rgba(0,0,0,.08)">
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;color:#3c3c43;font-size:13px"><i data-lucide="settings" style="width:15px;height:15px;color:#8e8e93"></i>Settings</div>
+            </div>
+          </div>
+          <!-- detail -->
+          <div style="flex:1;display:flex;flex-direction:column;background:#ffffff">
+            <!-- unified toolbar -->
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:.5px solid rgba(0,0,0,.09);background:rgba(255,255,255,.8);backdrop-filter:blur(30px)">
+              <div style="font-size:14px;font-weight:600;color:#1d1d1f">Today</div>
+              <div style="font-size:12px;color:#8e8e93">Monday, July 21</div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(0,122,255,.1);border:.5px solid rgba(0,122,255,.25);border-radius:8px;padding:5px 9px">
+                  <span style="width:7px;height:7px;border-radius:50%;background:#007aff;animation:tlpulse 1.6s ease-in-out infinite"></span>
+                  <span style="font-size:12px;color:#1d1d1f;font-weight:500">Timelet:Electron refactor</span>
+                  <span style="font-size:12px;color:#007aff;font-weight:600;font-variant-numeric:tabular-nums">04:12</span>
+                </div>
+                <button style="width:28px;height:28px;border-radius:7px;border:.5px solid rgba(0,0,0,.12);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#3c3c43;box-shadow:0 1px 1px rgba(0,0,0,.04)"><i data-lucide="plus" style="width:16px;height:16px"></i></button>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:18px 20px;background:#f5f5f7">
+              <div style="display:flex;align-items:baseline;gap:9px;padding:0 4px 14px"><span style="font-size:28px;font-weight:700;color:#1d1d1f;letter-spacing:-.02em;font-variant-numeric:tabular-nums">6h 40m</span><span style="font-size:12px;color:#8e8e93">tracked today</span></div>
+              <!-- inset grouped list -->
+              <div style="background:#fff;border-radius:11px;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fafafa;border-bottom:.5px solid rgba(0,0,0,.06)"><span style="width:10px;height:10px;border-radius:3px;background:#ff9500"></span><span style="font-size:13px;font-weight:600;color:#1d1d1f">Timelet</span><span style="margin-left:auto;font-size:12px;color:#8e8e93;font-variant-numeric:tabular-nums">3h 55m</span></div>
+                <div style="display:flex;align-items:center;padding:10px 14px 10px 34px;font-size:13px"><span style="color:#8e8e93;width:118px;font-variant-numeric:tabular-nums">13:30 – 15:40</span><span style="color:#1d1d1f;flex:1">Electron refactor</span><span style="color:#1d1d1f;font-weight:500;font-variant-numeric:tabular-nums">2h 10m</span></div>
+                <div style="display:flex;align-items:center;padding:10px 14px 10px 34px;font-size:13px;border-top:.5px solid rgba(0,0,0,.05)"><span style="color:#8e8e93;width:118px;font-variant-numeric:tabular-nums">09:15 – 11:00</span><span style="color:#1d1d1f;flex:1">Design mockups</span><span style="color:#1d1d1f;font-weight:500;font-variant-numeric:tabular-nums">1h 45m</span></div>
+              </div>
+              <div style="height:14px"></div>
+              <div style="background:#fff;border-radius:11px;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fafafa;border-bottom:.5px solid rgba(0,0,0,.06)"><span style="width:10px;height:10px;border-radius:3px;background:#007aff"></span><span style="font-size:13px;font-weight:600;color:#1d1d1f">Client-X</span><span style="margin-left:auto;font-size:12px;color:#8e8e93;font-variant-numeric:tabular-nums">1h 30m</span></div>
+                <div style="display:flex;align-items:center;padding:10px 14px 10px 34px;font-size:13px"><span style="color:#8e8e93;width:118px;font-variant-numeric:tabular-nums">11:20 – 12:50</span><span style="color:#1d1d1f;flex:1">Auth token bugfix</span><span style="color:#1d1d1f;font-weight:500;font-variant-numeric:tabular-nums">1h 30m</span></div>
+              </div>
+              <div style="height:14px"></div>
+              <div style="display:flex;gap:14px">
+                <div style="flex:1;background:#fff;border-radius:11px;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fafafa;border-bottom:.5px solid rgba(0,0,0,.06)"><span style="width:10px;height:10px;border-radius:3px;background:#af52de"></span><span style="font-size:13px;font-weight:600;color:#1d1d1f">Learning</span><span style="margin-left:auto;font-size:12px;color:#8e8e93;font-variant-numeric:tabular-nums">40m</span></div>
+                  <div style="display:flex;align-items:center;padding:10px 14px;font-size:12.5px"><span style="color:#1d1d1f;flex:1">Rust ownership</span><span style="color:#8e8e93;font-variant-numeric:tabular-nums">40m</span></div>
+                </div>
+                <div style="flex:1;background:#fff;border-radius:11px;box-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fafafa;border-bottom:.5px solid rgba(0,0,0,.06)"><span style="width:10px;height:10px;border-radius:3px;background:#34c759"></span><span style="font-size:13px;font-weight:600;color:#1d1d1f">Admin</span><span style="margin-left:auto;font-size:12px;color:#8e8e93;font-variant-numeric:tabular-nums">30m</span></div>
+                  <div style="display:flex;align-items:center;padding:10px 14px;font-size:12.5px"><span style="color:#1d1d1f;flex:1">Standup</span><span style="color:#8e8e93;font-variant-numeric:tabular-nums">25m</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2b POPUP (native alert-style panel) ============ -->
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Check-in popup · native floating panel</div>
+      <div style="width:440px;padding:34px;background:linear-gradient(135deg,#c7c6cc,#b6b5bd);border-radius:14px;display:flex;align-items:center;justify-content:center">
+        <div style="width:340px;background:rgba(246,246,248,.86);backdrop-filter:blur(40px);border-radius:16px;box-shadow:0 30px 80px -18px rgba(0,0,0,.5),0 0 0 .5px rgba(0,0,0,.14);overflow:hidden">
+          <div style="padding:22px 22px 4px;text-align:center">
+            <div style="width:46px;height:46px;border-radius:11px;background:linear-gradient(160deg,#ffb43a,#ff9500);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 4px 10px rgba(255,149,0,.35)"><i data-lucide="timer" style="width:26px;height:26px;color:#fff"></i></div>
+            <div style="font-size:15px;font-weight:600;color:#1d1d1f">What are you working on?</div>
+            <div style="font-size:12px;color:#8e8e93;margin-top:3px">Tracking the last 15 minutes</div>
+          </div>
+          <div style="padding:16px 22px 0">
+            <div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:9px;padding:10px 12px;box-shadow:0 0 0 3px rgba(0,122,255,.25),0 0 0 .5px rgba(0,0,0,.12)">
+              <span style="width:8px;height:8px;border-radius:2px;background:#ff9500"></span>
+              <span style="flex:1;font-size:13.5px;color:#1d1d1f">Timelet:Design mockups<span style="display:inline-block;width:1.5px;height:15px;background:#007aff;margin-left:1px;vertical-align:-2px;animation:tlcaret 1.05s step-end infinite"></span></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:16px 22px 20px">
+            <button style="flex:1;border:.5px solid rgba(0,0,0,.14);background:#fff;color:#1d1d1f;font-family:inherit;font-size:13px;font-weight:500;padding:9px;border-radius:8px;cursor:pointer;box-shadow:0 1px 1px rgba(0,0,0,.04)">Continue previous</button>
+            <button style="flex:1;border:none;background:#007aff;color:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer;box-shadow:0 1px 2px rgba(0,122,255,.4)">Save ⏎</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2c MENU BAR EXTRA ============ -->
+    <div class="dv-opt" id="2c">
+      <div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Menu bar extra · quick check-in</div>
+      <div style="width:400px;height:320px;position:relative;background:linear-gradient(135deg,#3a3a40,#1f1f24);border-radius:14px;overflow:hidden">
+        <!-- menubar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:26px;background:rgba(255,255,255,.14);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 12px;gap:16px">
+          <span style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:12px;color:#fff;background:rgba(255,255,255,.22);padding:2px 7px;border-radius:5px"><i data-lucide="timer" style="width:13px;height:13px"></i>4:12</span>
+          <i data-lucide="wifi" style="width:15px;height:15px;color:#fff"></i>
+          <span style="font-size:12px;color:#fff;font-weight:500">Mon 14:07</span>
+        </div>
+        <!-- popover -->
+        <div style="position:absolute;top:32px;right:52px;width:264px;background:rgba(246,246,248,.9);backdrop-filter:blur(40px);border-radius:12px;box-shadow:0 20px 50px -12px rgba(0,0,0,.55),0 0 0 .5px rgba(0,0,0,.18);overflow:hidden">
+          <div style="width:11px;height:11px;background:rgba(246,246,248,.9);position:absolute;top:-5px;right:38px;transform:rotate(45deg)"></div>
+          <div style="padding:13px 14px 10px">
+            <div style="font-size:11px;color:#8e8e93;font-weight:600;margin-bottom:8px">CURRENTLY TRACKING</div>
+            <div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:9px;padding:9px 11px;box-shadow:0 0 0 .5px rgba(0,0,0,.08)"><span style="width:8px;height:8px;border-radius:50%;background:#007aff;animation:tlpulse 1.6s infinite"></span><div style="flex:1"><div style="font-size:12.5px;color:#1d1d1f;font-weight:500">Timelet:Electron refactor</div></div><span style="font-size:12.5px;color:#007aff;font-weight:600;font-variant-numeric:tabular-nums">04:12</span></div>
+          </div>
+          <div style="padding:2px 8px 8px;display:flex;flex-direction:column;gap:1px">
+            <div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:13px;color:#1d1d1f"><i data-lucide="pencil" style="width:14px;height:14px;color:#636366"></i>Change task…</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:13px;color:#1d1d1f"><i data-lucide="pause" style="width:14px;height:14px;color:#636366"></i>Pause tracking</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:13px;color:#1d1d1f"><i data-lucide="layout-dashboard" style="width:14px;height:14px;color:#636366"></i>Open dashboard</div>
+            <div style="height:1px;background:rgba(0,0,0,.08);margin:4px 6px"></div>
+            <div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:13px;color:#1d1d1f"><i data-lucide="settings" style="width:14px;height:14px;color:#636366"></i>Settings…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2d SETTINGS (native form) ============ -->
+    <div class="dv-opt" id="2d">
+      <div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Settings · native grouped form</div>
+      <div class="win" style="width:500px;background:#f5f5f7">
+        <div style="height:52px;display:flex;align-items:center;padding:0 16px;background:rgba(246,246,248,.85);backdrop-filter:blur(30px);border-bottom:.5px solid rgba(0,0,0,.09)">
+          <div style="display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span><span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span><span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span></div>
+          <div style="flex:1;text-align:center;font-size:13px;font-weight:600;color:#1d1d1f">Settings</div><div style="width:56px"></div>
+        </div>
+        <!-- toolbar tabs -->
+        <div style="display:flex;justify-content:center;gap:2px;padding:12px 0;background:rgba(246,246,248,.7)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 14px;border-radius:7px;background:rgba(0,0,0,.07)"><i data-lucide="sliders-horizontal" style="width:18px;height:18px;color:#007aff"></i><span style="font-size:11px;color:#1d1d1f">General</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 14px;border-radius:7px"><i data-lucide="keyboard" style="width:18px;height:18px;color:#8e8e93"></i><span style="font-size:11px;color:#3c3c43">Shortcuts</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 14px;border-radius:7px"><i data-lucide="folder" style="width:18px;height:18px;color:#8e8e93"></i><span style="font-size:11px;color:#3c3c43">Projects</span></div>
+        </div>
+        <div style="padding:8px 22px 24px">
+          <div style="font-size:11px;font-weight:600;color:#8e8e93;padding:10px 4px 6px">TRACKING</div>
+          <div style="background:#fff;border-radius:10px;box-shadow:0 0 0 .5px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px"><span style="color:#1d1d1f;flex:1">Ask interval</span><div style="display:flex;align-items:center;gap:5px;color:#3c3c43;background:#f2f2f7;border:.5px solid rgba(0,0,0,.1);border-radius:7px;padding:4px 8px">15 minutes <i data-lucide="chevrons-up-down" style="width:13px;height:13px;color:#8e8e93"></i></div></div>
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px;border-top:.5px solid rgba(0,0,0,.06)"><span style="color:#1d1d1f;flex:1">Round durations to</span><div style="display:flex;align-items:center;gap:5px;color:#3c3c43;background:#f2f2f7;border:.5px solid rgba(0,0,0,.1);border-radius:7px;padding:4px 8px">5 minutes <i data-lucide="chevrons-up-down" style="width:13px;height:13px;color:#8e8e93"></i></div></div>
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px;border-top:.5px solid rgba(0,0,0,.06)"><span style="color:#1d1d1f;flex:1">Track during work hours only</span><div style="width:38px;height:23px;border-radius:999px;background:#34c759;position:relative"><span style="position:absolute;top:1.5px;right:1.5px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></div></div>
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px;border-top:.5px solid rgba(0,0,0,.06)"><span style="color:#1d1d1f;flex:1">Pause in Do Not Disturb</span><div style="width:38px;height:23px;border-radius:999px;background:#e3e3e8;position:relative"><span style="position:absolute;top:1.5px;left:1.5px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span></div></div>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:#8e8e93;padding:16px 4px 6px">APPEARANCE</div>
+          <div style="background:#fff;border-radius:10px;box-shadow:0 0 0 .5px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px"><span style="color:#1d1d1f;flex:1">Appearance</span>
+              <div style="display:flex;background:#e9e9ee;border-radius:7px;padding:2px;gap:2px;font-size:12px"><span style="padding:4px 12px;background:#fff;border-radius:5px;color:#1d1d1f;font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.12)">Light</span><span style="padding:4px 12px;color:#636366">Dark</span><span style="padding:4px 12px;color:#636366">Auto</span></div>
+            </div>
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px;border-top:.5px solid rgba(0,0,0,.06)"><span style="color:#1d1d1f;flex:1">Language</span><div style="display:flex;align-items:center;gap:5px;color:#3c3c43;background:#f2f2f7;border:.5px solid rgba(0,0,0,.1);border-radius:7px;padding:4px 8px">English <i data-lucide="chevrons-up-down" style="width:13px;height:13px;color:#8e8e93"></i></div></div>
+            <div style="display:flex;align-items:center;padding:11px 14px;font-size:13px;border-top:.5px solid rgba(0,0,0,.06)"><span style="color:#1d1d1f;flex:1">Launch at login</span><div style="width:38px;height:23px;border-radius:999px;background:#34c759;position:relative"><span style="position:absolute;top:1.5px;right:1.5px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2e EMPTY STATE ============ -->
+    <div class="dv-opt" id="2e">
+      <div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a>Empty state · first run</div>
+      <div class="win" style="width:440px;background:#ffffff">
+        <div style="height:48px;display:flex;align-items:center;padding:0 15px;background:rgba(246,246,248,.85);backdrop-filter:blur(30px);border-bottom:.5px solid rgba(0,0,0,.09)">
+          <div style="display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></span><span style="width:12px;height:12px;border-radius:50%;background:#febc2e"></span><span style="width:12px;height:12px;border-radius:50%;background:#28c840"></span></div>
+          <div style="flex:1;text-align:center;font-size:13px;font-weight:600;color:#1d1d1f">Timelet</div><div style="width:56px"></div>
+        </div>
+        <div style="padding:52px 44px 56px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="width:66px;height:66px;border-radius:16px;background:linear-gradient(160deg,#ffb43a,#ff9500);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 8px 18px rgba(255,149,0,.35)"><i data-lucide="timer" style="width:36px;height:36px;color:#fff"></i></div>
+          <div style="font-size:18px;font-weight:700;color:#1d1d1f;letter-spacing:-.01em;margin-bottom:8px">No time tracked yet</div>
+          <div style="font-size:13px;line-height:1.55;color:#636366;max-width:300px;margin-bottom:22px">Timelet checks in every <b style="color:#1d1d1f">15 minutes</b> and asks what you're up to. Just answer in <b style="color:#1d1d1f">Project:Activity</b> form.</div>
+          <button style="border:none;background:#007aff;color:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:9px 20px;border-radius:9px;cursor:pointer;box-shadow:0 1px 2px rgba(0,122,255,.4)">Start tracking</button>
+          <div style="font-size:12px;color:#a1a1a6;margin-top:13px">or press <span style="background:#f2f2f7;border:.5px solid rgba(0,0,0,.1);border-radius:5px;padding:1px 6px;color:#3c3c43">⌘⇧T</span> anytime</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "dark mode of <a class="dv-oid" href="#2a">2a</a>" · "week / timesheet view" · "stats screen with charts" · "make the menu-bar popover <a class="dv-oid" href="#2c">2c</a> the primary check-in instead"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this._icons(); }
+  componentDidUpdate() { this._icons(); }
+  _icons() {
+    let n = 0;
+    const run = () => {
+      if (window.lucide && window.lucide.createIcons) { window.lucide.createIcons(); }
+      else if (n++ < 40) { setTimeout(run, 100); }
+    };
+    run();
+    setTimeout(() => window.lucide && window.lucide.createIcons(), 500);
+  }
+}
+</script>
+</body>
+</html>
