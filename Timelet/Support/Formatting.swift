@@ -48,11 +48,16 @@ enum Format {
         return f
     }()
 
-    private static let longDateFormatter: DateFormatter = {
+    private static let longDateFormatter = formatter("EEEE, MMMM d")
+    private static let weekdayFormatter = formatter("EEEE")
+    private static let weekdayShortFormatter = formatter("EEE")
+    private static let monthDayFormatter = formatter("MMM d")
+
+    private static func formatter(_ format: String) -> DateFormatter {
         let f = DateFormatter()
-        f.dateFormat = "EEEE, MMMM d"
+        f.dateFormat = format
         return f
-    }()
+    }
 
     /// `13:30`
     static func clock(_ date: Date) -> String { clockFormatter.string(from: date) }
@@ -64,4 +69,42 @@ enum Format {
 
     /// `Monday, July 21`
     static func longDate(_ date: Date) -> String { longDateFormatter.string(from: date) }
+
+    /// `Mon`
+    static func weekdayShort(_ date: Date) -> String { weekdayShortFormatter.string(from: date) }
+
+    /// `Jul 21`
+    static func monthDay(_ date: Date) -> String { monthDayFormatter.string(from: date) }
+
+    // MARK: Relative day / week titles
+
+    /// `Today` / `Yesterday` / `Tomorrow` / weekday name.
+    static func dayTitle(_ date: Date, now: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) { return "Today" }
+        if let y = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: y) { return "Yesterday" }
+        if let t = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(date, inSameDayAs: t) { return "Tomorrow" }
+        return weekdayFormatter.string(from: date)
+    }
+
+    /// The [start, end) interval of the week containing `date`.
+    static func weekInterval(_ date: Date) -> DateInterval {
+        Calendar.current.dateInterval(of: .weekOfYear, for: date) ?? DateInterval(start: date, duration: 604_800)
+    }
+
+    /// `This Week` / `Last Week` / `Week of Jul 14`.
+    static func weekTitle(_ date: Date, now: Date) -> String {
+        let cal = Calendar.current
+        if let cur = cal.dateInterval(of: .weekOfYear, for: now), cur.contains(date) { return "This Week" }
+        if let last = cal.date(byAdding: .weekOfYear, value: -1, to: now),
+           let li = cal.dateInterval(of: .weekOfYear, for: last), li.contains(date) { return "Last Week" }
+        return "Week of \(monthDay(weekInterval(date).start))"
+    }
+
+    /// `Jul 21 – Jul 27`
+    static func weekSubtitle(_ date: Date) -> String {
+        let interval = weekInterval(date)
+        let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: interval.end) ?? interval.end
+        return "\(monthDay(interval.start)) – \(monthDay(lastDay))"
+    }
 }

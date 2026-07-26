@@ -5,16 +5,18 @@ enum SidebarItem: Hashable {
     case today, week, statistics
 }
 
-/// Vibrancy sidebar (2a): nav rows, a Projects section with per-project day totals,
-/// and a pinned Settings row.
+/// Vibrancy sidebar (2a): nav rows, a Projects section with per-project day totals + inline
+/// editing (click to edit name/color, right-click to archive/delete), and a Settings row.
 struct Sidebar: View {
     @Binding var selection: SidebarItem
     @Environment(TrackingEngine.self) private var engine
     @Query(sort: \Project.order) private var projects: [Project]
     @Query private var entries: [Entry]
+    @State private var editingProject: Project?
+    @State private var pendingDelete: Project?
 
     var body: some View {
-        let totals = TodaySummary.projectTotals(entries: entries, now: engine.now)
+        let totals = DaySummary.projectTotals(entries: entries, day: engine.now, now: engine.now)
         List(selection: $selection) {
             Label("Today", systemImage: "calendar").tag(SidebarItem.today)
             Label("This Week", systemImage: "calendar.badge.clock").tag(SidebarItem.week)
@@ -28,6 +30,18 @@ struct Sidebar: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) { settingsRow }
+        .sheet(item: $editingProject) { ProjectEditorView(project: $0) }
+        .confirmationDialog(
+            "Delete this project and all its entries?",
+            isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+            titleVisibility: .visible,
+            presenting: pendingDelete
+        ) { project in
+            Button("Delete “\(project.name)”", role: .destructive) {
+                engine.deleteProject(project)
+                pendingDelete = nil
+            }
+        }
     }
 
     private func projectRow(_ project: Project, total: TimeInterval) -> some View {
@@ -41,6 +55,11 @@ struct Sidebar: View {
                 .foregroundStyle(Theme.textQuaternary)
                 .monospacedDigit()
         }
+        .contentShape(Rectangle())
+        .onTapGesture { editingProject = project }
+        .projectContextMenu(project, engine: engine,
+                            onEdit: { editingProject = project },
+                            onDelete: { pendingDelete = project })
     }
 
     private var settingsRow: some View {

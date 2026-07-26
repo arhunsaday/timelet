@@ -16,6 +16,8 @@ protocol TrackingStore: AnyObject {
     func checkInSave(text: String)
     func continuePrevious()
     func addManualEntry(text: String, duration: TimeInterval)
+    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date)
+    func deleteEntry(_ entry: Entry)
     func togglePause()
     func stopTracking()
     func suggestions(matching prefix: String, limit: Int) -> [String]
@@ -30,14 +32,23 @@ final class TrackingEngine: TrackingStore {
     private(set) var isPaused = false
     private(set) var now = Date.now
     private(set) var lastActivityLabel: String?
+    /// While set (and in the future), the ask-timer and idle check-ins are suppressed.
+    private(set) var snoozedUntil: Date?
 
-    /// UI hook invoked when the ask interval elapses (wired to the check-in panel by the app).
+    /// UI hooks (wired to the check-in panel by the app).
     @ObservationIgnored var onAskDue: (() -> Void)?
+    @ObservationIgnored var onIdleReturn: ((TimeInterval) -> Void)?
 
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private var tickTimer: Timer?
     @ObservationIgnored private var askTimer: Timer?
+    @ObservationIgnored private var idleTimer: Timer?
+    @ObservationIgnored private var idleFlagged = false
+    @ObservationIgnored private var idleStart: Date?
+    @ObservationIgnored private var pendingIdle: (interval: DateInterval, resumeLabel: String?)?
+
+    var isSnoozed: Bool { (snoozedUntil ?? .distantPast) > .now }
 
     var currentActivity: Activity? { runningEntry?.activity }
     var elapsed: TimeInterval { runningEntry.map { now.timeIntervalSince($0.start) } ?? 0 }
@@ -49,6 +60,7 @@ final class TrackingEngine: TrackingStore {
         resumeExistingRunningEntry()
         startTick()
         scheduleAskTimer()
+        startIdleMonitor()
     }
 
     // MARK: - Public operations
@@ -84,6 +96,58 @@ final class TrackingEngine: TrackingStore {
         guard let activity = resolveActivity(from: text), duration > 0 else { return }
         let end = Date.now
         context.insert(Entry(start: end.addingTimeInterval(-duration), end: end, activity: activity))
+        save()
+    }
+
+    /// Edit a completed block: reassign its activity/group and adjust its interval.
+    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date) {
+        if let activity = resolveActivity(from: text) { entry.activity = activity }
+        entry.start = start
+        entry.end = max(start, end)
+        save()
+    }
+
+    func deleteEntry(_ entry: Entry) {
+        if entry.persistentModelID == runningEntry?.persistentModelID {
+            runningEntry = nil
+            tickTimer?.invalidate()
+            tickTimer = nil
+        }
+        context.delete(entry)
+        save()
+    }
+
+    // MARK: - Project management
+
+    func renameProject(_ project: Project, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        project.name = trimmed
+        if runningEntry?.activity?.project?.persistentModelID == project.persistentModelID {
+            lastActivityLabel = runningEntry?.activity?.label
+        }
+        save()
+    }
+
+    func setProjectColor(_ project: Project, hex: String) {
+        project.colorHex = hex
+        save()
+    }
+
+    func setProjectArchived(_ project: Project, _ archived: Bool) {
+        project.isArchived = archived
+        save()
+    }
+
+    func deleteProject(_ project: Project) {
+        if runningEntry?.activity?.project?.persistentModelID == project.persistentModelID {
+            runningEntry = nil
+            isPaused = false
+            tickTimer?.invalidate()
+            tickTimer = nil
+            lastActivityLabel = nil
+        }
+        context.delete(project) // cascades to activities + entries
         save()
     }
 
@@ -244,9 +308,97 @@ final class TrackingEngine: TrackingStore {
 
     private func fireAskIfAllowed() {
         guard !isPaused else { return }
+        if let until = snoozedUntil {
+            if Date.now < until { return }
+            snoozedUntil = nil // expired
+        }
         if settings.workHoursOnly && !isWithinWorkHours(.now) { return }
         if settings.pauseInDoNotDisturb && Self.isDoNotDisturbActive() { return }
         onAskDue?()
+    }
+
+    // MARK: - Snooze ("Stop asking for X")
+
+    func snooze(for seconds: TimeInterval) { snoozedUntil = Date.now.addingTimeInterval(seconds) }
+
+    func snoozeUntilEndOfDay() {
+        snoozedUntil = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: .now)
+            ?? Date.now.addingTimeInterval(8 * 3600)
+    }
+
+    func resumeAsking() { snoozedUntil = nil }
+
+    // MARK: - Idle detection
+
+    private func startIdleMonitor() {
+        idleTimer?.invalidate()
+        let timer = Timer(timeInterval: 15, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkIdle() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        idleTimer = timer
+    }
+
+    private func checkIdle() {
+        guard settings.idleDetectionEnabled, !isPaused, !isSnoozed else {
+            idleFlagged = false
+            return
+        }
+        let idle = IdleMonitor.idleSeconds()
+        let threshold = TimeInterval(max(1, settings.idleThresholdMinutes) * 60)
+        if idle >= threshold {
+            if !idleFlagged, runningEntry != nil {
+                idleFlagged = true
+                idleStart = Date.now.addingTimeInterval(-idle)
+            }
+        } else if idleFlagged {
+            idleFlagged = false
+            handleIdleReturn()
+        }
+    }
+
+    private func handleIdleReturn() {
+        guard let start = idleStart, let entry = runningEntry else { idleStart = nil; return }
+        idleStart = nil
+        let awayStart = max(entry.start, start)
+        let resumeLabel = entry.activity?.label ?? lastActivityLabel
+
+        // Carve the away period out of the running entry.
+        if awayStart.timeIntervalSince(entry.start) < 60 {
+            context.delete(entry) // the whole (tiny) block was idle
+        } else {
+            entry.end = awayStart
+        }
+        lastActivityLabel = resumeLabel
+        runningEntry = nil
+        tickTimer?.invalidate()
+        tickTimer = nil
+        save()
+
+        pendingIdle = (DateInterval(start: awayStart, end: .now), resumeLabel)
+        onIdleReturn?(awayStart.distance(to: .now))
+    }
+
+    /// Log the away period as `text`, then resume the previous task from now.
+    func logIdle(text: String) {
+        if let pending = pendingIdle, let activity = resolveActivity(from: text) {
+            context.insert(Entry(start: pending.interval.start, end: pending.interval.end, activity: activity))
+        }
+        finishIdle()
+    }
+
+    /// Drop the away period (leave it untracked), then resume the previous task from now.
+    func discardIdle() { finishIdle() }
+
+    private func finishIdle() {
+        let label = pendingIdle?.resumeLabel
+        pendingIdle = nil
+        if let label, let activity = resolveActivity(from: label) {
+            openRunningEntry(for: activity)
+            isPaused = false
+            startTick()
+        }
+        save()
     }
 
     private func isWithinWorkHours(_ date: Date) -> Bool {

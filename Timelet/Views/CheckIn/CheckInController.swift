@@ -21,31 +21,36 @@ final class CheckInController {
 
     func present() {
         guard let engine, let settings else { return }
+        show(CheckInPanel(
+            engine: engine,
+            mode: .regular(intervalMinutes: settings.askIntervalMinutes),
+            onPrimary: { [weak self] text in engine.checkInSave(text: text); self?.dismiss() },
+            onSecondary: { [weak self] in engine.continuePrevious(); self?.dismiss() }
+        ))
+    }
+
+    /// Present the "Welcome back" idle prompt for the away period.
+    func presentIdle(awaySeconds: TimeInterval) {
+        guard let engine else { return }
+        show(CheckInPanel(
+            engine: engine,
+            mode: .idle(awaySeconds: awaySeconds),
+            onPrimary: { [weak self] text in engine.logIdle(text: text); self?.dismiss() },
+            onSecondary: { [weak self] in engine.discardIdle(); self?.dismiss() }
+        ))
+    }
+
+    /// Rebuild content each presentation so the prefill / caret reset to the latest activity.
+    private func show<Content: View>(_ root: Content) {
         let panel = panel ?? FloatingPanel()
         self.panel = panel
-
-        // Rebuild content each time so the prefill / caret reset to the latest activity.
-        let root = CheckInPanel(
-            engine: engine,
-            intervalMinutes: settings.askIntervalMinutes,
-            onSave: { [weak self] text in
-                engine.checkInSave(text: text)
-                self?.dismiss()
-            },
-            onContinue: { [weak self] in
-                engine.continuePrevious()
-                self?.dismiss()
-            }
-        )
         let hosting = NSHostingView(rootView: root)
         panel.contentView = hosting
         panel.setContentSize(hosting.fittingSize)
         center(panel)
-
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         isPresented = true
-
         installResignObserver(for: panel)
     }
 

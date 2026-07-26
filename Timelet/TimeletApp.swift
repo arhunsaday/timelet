@@ -51,6 +51,7 @@ final class AppModel {
         let checkIn = CheckInController()
         checkIn.configure(engine: engine, settings: settings)
         engine.onAskDue = { [weak checkIn] in checkIn?.present() }
+        engine.onIdleReturn = { [weak checkIn] away in checkIn?.presentIdle(awaySeconds: away) }
 
         self.settings = settings
         self.container = container

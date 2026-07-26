@@ -44,6 +44,8 @@ final class AppSettings {
     var workStartMinutes: Int { didSet { d.set(workStartMinutes, forKey: Key.workStart) } } // from midnight
     var workEndMinutes: Int { didSet { d.set(workEndMinutes, forKey: Key.workEnd) } }
     var pauseInDoNotDisturb: Bool { didSet { d.set(pauseInDoNotDisturb, forKey: Key.pauseInDND) } }
+    var idleDetectionEnabled: Bool { didSet { d.set(idleDetectionEnabled, forKey: Key.idleEnabled) } }
+    var idleThresholdMinutes: Int { didSet { d.set(idleThresholdMinutes, forKey: Key.idleThreshold) } }
 
     // Appearance
     var appearance: AppearanceMode { didSet { d.set(appearance.rawValue, forKey: Key.appearance) } }
@@ -54,6 +56,7 @@ final class AppSettings {
 
     static let intervalOptions = [5, 10, 15, 20, 30, 60]
     static let roundingOptions = [0, 1, 5, 10, 15]
+    static let idleOptions = [5, 10, 15, 30]
 
     @ObservationIgnored private let d = UserDefaults.standard
 
@@ -64,6 +67,8 @@ final class AppSettings {
         workStartMinutes = d.object(forKey: Key.workStart) as? Int ?? (9 * 60)
         workEndMinutes = d.object(forKey: Key.workEnd) as? Int ?? (18 * 60)
         pauseInDoNotDisturb = d.object(forKey: Key.pauseInDND) as? Bool ?? false
+        idleDetectionEnabled = d.object(forKey: Key.idleEnabled) as? Bool ?? true
+        idleThresholdMinutes = d.object(forKey: Key.idleThreshold) as? Int ?? 10
         appearance = AppearanceMode(rawValue: d.string(forKey: Key.appearance) ?? "") ?? .light
         language = AppLanguage(rawValue: d.string(forKey: Key.language) ?? "") ?? .english
         hasSeeded = d.bool(forKey: Key.hasSeeded)
@@ -76,6 +81,8 @@ final class AppSettings {
         static let workStart = "workStartMinutes"
         static let workEnd = "workEndMinutes"
         static let pauseInDND = "pauseInDoNotDisturb"
+        static let idleEnabled = "idleDetectionEnabled"
+        static let idleThreshold = "idleThresholdMinutes"
         static let appearance = "appearance"
         static let language = "language"
         static let hasSeeded = "hasSeeded"

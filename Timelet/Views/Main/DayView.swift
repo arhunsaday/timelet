@@ -1,25 +1,29 @@
 import SwiftUI
 import SwiftData
 
-/// Today screen (2a detail): headline total + grouped project cards. Falls back to the
-/// empty state (2e) when nothing has been tracked and nothing is running.
-struct TodayView: View {
+/// Day screen (2a detail): headline total + grouped project cards for `date`. Tapping a
+/// block opens the entry editor. Falls back to an empty state when nothing was tracked.
+struct DayView: View {
+    let date: Date
     @Environment(TrackingEngine.self) private var engine
     @Query(sort: \Entry.start, order: .reverse) private var entries: [Entry]
+    @State private var editing: Entry?
 
     var body: some View {
-        let summary = TodaySummary.build(
-            entries: entries,
-            runningElapsedToday: runningElapsedToday,
-            now: engine.now
+        let summary = DaySummary.build(
+            entries: entries, day: date, runningElapsed: runningElapsed, now: engine.now
         )
 
         Group {
-            if summary.isEmpty && engine.runningEntry == nil && !engine.isPaused {
-                EmptyStateView()
+            if summary.isEmpty && !runningCountsForDay {
+                if isToday {
+                    EmptyStateView()
+                } else {
+                    emptyDay
+                }
             } else {
                 ScrollView {
-                    TodayContent(summary: summary)
+                    DayContent(summary: summary, onSelect: { editing = $0 })
                         .padding(.horizontal, 20)
                         .padding(.vertical, 18)
                 }
@@ -27,19 +31,42 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.contentBackground)
+        .sheet(item: $editing) { EntryEditorView(entry: $0) }
     }
 
-    private var runningElapsedToday: TimeInterval {
-        guard let running = engine.runningEntry,
+    private var isToday: Bool { Calendar.current.isDateInToday(date) }
+
+    private var runningCountsForDay: Bool {
+        isToday && (engine.runningEntry != nil || engine.isPaused)
+    }
+
+    private var runningElapsed: TimeInterval {
+        guard isToday, let running = engine.runningEntry,
               Calendar.current.isDate(running.start, inSameDayAs: engine.now) else { return 0 }
         return engine.elapsed
     }
+
+    private var emptyDay: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "moon.zzz")
+                .font(.system(size: 34))
+                .foregroundStyle(Theme.textQuaternary)
+            Text("No time tracked")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text(Format.longDate(date))
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
-/// The scrollable body of Today: headline + cards. Pure (takes a prebuilt summary) so it
+/// The scrollable body of a day: headline + cards. Pure (takes a prebuilt summary) so it
 /// can be rendered outside a ScrollView.
-struct TodayContent: View {
-    let summary: TodaySummary
+struct DayContent: View {
+    let summary: DaySummary
+    var onSelect: (Entry) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -48,10 +75,10 @@ struct TodayContent: View {
             if summary.isEmpty {
                 InProgressCard()
             } else {
-                ForEach(fullCards) { ProjectCard(project: $0) }
+                ForEach(fullCards) { ProjectCard(project: $0, onSelect: onSelect) }
                 ForEach(Array(compactRows.enumerated()), id: \.offset) { _, pair in
                     HStack(alignment: .top, spacing: 14) {
-                        ForEach(pair) { CompactProjectCard(project: $0) }
+                        ForEach(pair) { CompactProjectCard(project: $0, onSelect: onSelect) }
                         if pair.count == 1 { Color.clear.frame(maxWidth: .infinity) }
                     }
                 }
@@ -66,18 +93,18 @@ struct TodayContent: View {
                 .foregroundStyle(Theme.textPrimary)
                 .monospacedDigit()
                 .tracking(-0.5)
-            Text("tracked today")
+            Text("tracked")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
         }
         .padding(.horizontal, 4)
     }
 
-    private var fullCards: [ProjectSummary] {
+    private var fullCards: [ProjectGroup] {
         summary.projects.filter { !$0.isCompact }
     }
 
-    private var compactRows: [[ProjectSummary]] {
+    private var compactRows: [[ProjectGroup]] {
         let compact = summary.projects.filter(\.isCompact)
         return stride(from: 0, to: compact.count, by: 2).map {
             Array(compact[$0..<min($0 + 2, compact.count)])

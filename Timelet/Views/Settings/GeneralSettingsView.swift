@@ -57,6 +57,20 @@ struct GeneralSettingsContent: View {
                         Toggle("", isOn: $settings.pauseInDoNotDisturb)
                             .labelsHidden().toggleStyle(.switch).tint(Theme.toggleOn)
                     }
+                    Hairline()
+                    SettingsRow(label: "Detect idle time") {
+                        Toggle("", isOn: $settings.idleDetectionEnabled)
+                            .labelsHidden().toggleStyle(.switch).tint(Theme.toggleOn)
+                    }
+                    if settings.idleDetectionEnabled {
+                        Hairline()
+                        SettingsRow(label: "Ask after idle for") {
+                            Picker("", selection: $settings.idleThresholdMinutes) {
+                                ForEach(AppSettings.idleOptions, id: \.self) { Text("\($0) minutes").tag($0) }
+                            }
+                            .labelsHidden().pickerStyle(.menu).fixedSize()
+                        }
+                    }
                 }
 
                 SettingsSectionLabel(text: "APPEARANCE").padding(.top, 8)

@@ -28,9 +28,9 @@ enum SnapshotRunner {
                    Calendar.current.isDate(r.start, inSameDayAs: app.engine.now) { return app.engine.elapsed }
                 return 0
             }()
-            let summary = TodaySummary.build(entries: entries, runningElapsedToday: runningElapsed, now: app.engine.now)
+            let summary = DaySummary.build(entries: entries, day: app.engine.now, runningElapsed: runningElapsed, now: app.engine.now)
             renderApp(
-                TodayContent(summary: summary)
+                DayContent(summary: summary)
                     .padding(.horizontal, 20).padding(.vertical, 18)
                     .frame(width: 672, alignment: .top)
                     .background(Theme.contentBackground),
@@ -38,7 +38,7 @@ enum SnapshotRunner {
 
             // 2a — sidebar (List can't be rendered; a faithful static stand-in).
             let projects = ((try? app.container.mainContext.fetch(FetchDescriptor<Project>(sortBy: [SortDescriptor(\.order)]))) ?? [])
-            let totals = TodaySummary.projectTotals(entries: entries, now: app.engine.now)
+            let totals = DaySummary.projectTotals(entries: entries, day: app.engine.now, now: app.engine.now)
             renderApp(
                 SidebarSnapshot(projects: projects.map {
                     ($0.name, $0.colorHex, totals[$0.persistentModelID] ?? 0)
@@ -47,8 +47,8 @@ enum SnapshotRunner {
 
             // 2b — check-in panel.
             renderApp(
-                CheckInPanel(engine: app.engine, intervalMinutes: app.settings.askIntervalMinutes,
-                             onSave: { _ in }, onContinue: {}),
+                CheckInPanel(engine: app.engine, mode: .regular(intervalMinutes: app.settings.askIntervalMinutes),
+                             onPrimary: { _ in }, onSecondary: {}),
                 app: app, to: dir.appendingPathComponent("2b_checkin.png"))
 
             // 2c — menu-bar popover.
@@ -67,6 +67,24 @@ enum SnapshotRunner {
             renderApp(
                 EmptyStateView().frame(width: 440, height: 340),
                 app: app, to: dir.appendingPathComponent("2e_empty.png"))
+
+            // New screens.
+            if let entry = (try? app.container.mainContext.fetch(
+                FetchDescriptor<Entry>(predicate: #Predicate { $0.end != nil })))?.first {
+                renderApp(EntryEditorView(entry: entry), app: app,
+                          to: dir.appendingPathComponent("3a_entry_editor.png"))
+            }
+            if let project = (try? app.container.mainContext.fetch(FetchDescriptor<Project>()))?.first {
+                renderApp(ProjectEditorView(project: project), app: app,
+                          to: dir.appendingPathComponent("3b_project_editor.png"))
+            }
+            renderApp(WeekView(weekDate: app.engine.now).frame(width: 700, height: 760),
+                      app: app, to: dir.appendingPathComponent("3c_week.png"))
+            renderApp(StatisticsView().frame(width: 700, height: 820),
+                      app: app, to: dir.appendingPathComponent("3d_stats.png"))
+            renderApp(CheckInPanel(engine: app.engine, mode: .idle(awaySeconds: 12 * 60),
+                                   onPrimary: { _ in }, onSecondary: {}),
+                      app: app, to: dir.appendingPathComponent("3e_idle.png"))
 
             try? await Task.sleep(nanoseconds: 200_000_000)
             NSApp.terminate(nil)

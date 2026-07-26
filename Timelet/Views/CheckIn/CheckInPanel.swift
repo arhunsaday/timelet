@@ -1,24 +1,55 @@
 import SwiftUI
 
-/// The recurring "What are you working on?" check-in (screen 2b).
-/// Small centered floating panel with a combobox-style entry field and Continue / Save.
+/// What the check-in is asking about.
+enum CheckInMode {
+    case regular(intervalMinutes: Int)
+    case idle(awaySeconds: TimeInterval)
+
+    var title: String {
+        switch self {
+        case .regular: "What are you working on?"
+        case .idle: "Welcome back"
+        }
+    }
+    var subtitle: String {
+        switch self {
+        case .regular(let minutes): "Tracking the last \(minutes) minutes"
+        case .idle(let seconds): "You were away for \(Format.duration(seconds)). What were you doing?"
+        }
+    }
+    var primaryTitle: String {
+        switch self {
+        case .regular: "Save"
+        case .idle: "Log"
+        }
+    }
+    var secondaryTitle: String {
+        switch self {
+        case .regular: "Continue previous"
+        case .idle: "Discard"
+        }
+    }
+}
+
+/// The recurring "What are you working on?" check-in (screen 2b), also reused for the idle
+/// "Welcome back" prompt. Small centered floating panel with a combobox entry field.
 struct CheckInPanel: View {
     let engine: TrackingEngine
-    let intervalMinutes: Int
-    let onSave: (String) -> Void
-    let onContinue: () -> Void
+    let mode: CheckInMode
+    let onPrimary: (String) -> Void
+    let onSecondary: () -> Void
 
     @State private var text: String
     @State private var hasEdited = false
     @State private var selection: Int?
     @FocusState private var focused: Bool
 
-    init(engine: TrackingEngine, intervalMinutes: Int,
-         onSave: @escaping (String) -> Void, onContinue: @escaping () -> Void) {
+    init(engine: TrackingEngine, mode: CheckInMode,
+         onPrimary: @escaping (String) -> Void, onSecondary: @escaping () -> Void) {
         self.engine = engine
-        self.intervalMinutes = intervalMinutes
-        self.onSave = onSave
-        self.onContinue = onContinue
+        self.mode = mode
+        self.onPrimary = onPrimary
+        self.onSecondary = onSecondary
         _text = State(initialValue: engine.lastActivityLabel ?? "")
     }
 
@@ -35,7 +66,7 @@ struct CheckInPanel: View {
             RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
                 .strokeBorder(.black.opacity(0.10), lineWidth: 0.5)
         )
-        .onExitCommand { onContinue() } // Escape → keep tracking previous silently
+        .onExitCommand { onSecondary() } // Escape → Continue previous / Discard
         .onAppear { focused = true }
     }
 
@@ -45,12 +76,13 @@ struct CheckInPanel: View {
         VStack(spacing: 3) {
             AppIconBadge(size: 46)
                 .padding(.bottom, 9)
-            Text("What are you working on?")
+            Text(mode.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
-            Text("Tracking the last \(intervalMinutes) minutes")
+            Text(mode.subtitle)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
+                .multilineTextAlignment(.center)
         }
         .padding(.top, 22)
         .padding(.horizontal, 22)
@@ -69,14 +101,12 @@ struct CheckInPanel: View {
                 .font(.system(size: 13.5))
                 .foregroundStyle(Theme.textPrimary)
                 .focused($focused)
-                .onSubmit(save)
+                .onSubmit(primary)
                 .onChange(of: text) {
                     hasEdited = true
                     selection = nil
                 }
-                .onMoveCommand { direction in
-                    moveSelection(direction)
-                }
+                .onMoveCommand { moveSelection($0) }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -104,7 +134,7 @@ struct CheckInPanel: View {
             ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
                 let (project, activity) = TrackingEngine.parse(suggestion)
                 Button {
-                    onSave(suggestion)
+                    onPrimary(suggestion)
                 } label: {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -135,13 +165,13 @@ struct CheckInPanel: View {
 
     private var buttons: some View {
         HStack(spacing: 8) {
-            Button { onContinue() } label: {
-                Text("Continue previous").frame(maxWidth: .infinity)
+            Button { onSecondary() } label: {
+                Text(mode.secondaryTitle).frame(maxWidth: .infinity)
             }
             .buttonStyle(SecondaryButtonStyle())
-            Button(action: save) {
+            Button(action: primary) {
                 HStack(spacing: 5) {
-                    Text("Save")
+                    Text(mode.primaryTitle)
                     Text("⏎").opacity(0.85)
                 }
                 .frame(maxWidth: .infinity)
@@ -161,11 +191,11 @@ struct CheckInPanel: View {
         return engine.projectColorHex(named: project) ?? Theme.palette[0]
     }
 
-    private func save() {
+    private func primary() {
         if let selection, suggestions.indices.contains(selection) {
-            onSave(suggestions[selection])
+            onPrimary(suggestions[selection])
         } else {
-            onSave(text)
+            onPrimary(text)
         }
     }
 

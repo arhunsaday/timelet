@@ -13,6 +13,15 @@ struct MenuBarPanel: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
                 statusRow
+                if engine.isSnoozed, let until = engine.snoozedUntil {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bell.slash.fill")
+                            .font(.system(size: 10))
+                        Text("Not asking until \(Format.clock(until))")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundStyle(Theme.textTertiary)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.top, 13)
@@ -26,6 +35,7 @@ struct MenuBarPanel: View {
                         title: engine.isPaused ? "Resume tracking" : "Pause tracking"
                     ) { engine.togglePause() }
                 }
+                snoozeControl
                 MenuActionRow(icon: "square.grid.2x2", title: "Open dashboard") { openDashboard() }
                 Hairline().padding(.horizontal, 6).padding(.vertical, 4)
                 SettingsLink {
@@ -81,6 +91,25 @@ struct MenuBarPanel: View {
             RoundedRectangle(cornerRadius: Radius.field, style: .continuous)
                 .strokeBorder(Theme.stroke, lineWidth: 0.5)
         )
+    }
+
+    @ViewBuilder
+    private var snoozeControl: some View {
+        if engine.isSnoozed {
+            MenuActionRow(icon: "bell.slash.fill", title: "Resume asking") { engine.resumeAsking() }
+        } else {
+            Menu {
+                Button("For 30 minutes") { engine.snooze(for: 30 * 60) }
+                Button("For 1 hour") { engine.snooze(for: 3600) }
+                Button("For 2 hours") { engine.snooze(for: 2 * 3600) }
+                Button("Until end of day") { engine.snoozeUntilEndOfDay() }
+            } label: {
+                MenuActionRowLabel(icon: "bell.slash", title: "Stop asking…")
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+        }
     }
 
     private func openDashboard() {
