@@ -1,0 +1,14 @@
+# Xcode / generated project
+*.xcodeproj/
+!project.yml
+DerivedData/
+build/
+.build/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# SwiftPM
+Package.resolved
