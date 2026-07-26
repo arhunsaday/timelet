@@ -27,18 +27,17 @@ struct AppIconBadge: View {
     }
 }
 
-/// Active-tracking indicator: a subtle ~1.6s opacity pulse.
+/// Active-tracking indicator: a filled dot with a native repeating pulse. Uses `symbolEffect`
+/// (rather than a manual `@State` animation) so it stays smooth even inside a toolbar that
+/// rebuilds every second as the timer ticks.
 struct PulsingDot: View {
     var color: Color = Theme.accent
     var size: CGFloat = 7
-    @State private var pulsing = false
     var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: size, height: size)
-            .opacity(pulsing ? 0.3 : 1)
-            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsing)
-            .onAppear { pulsing = true }
+        Image(systemName: "circle.fill")
+            .font(.system(size: size))
+            .foregroundStyle(color)
+            .symbolEffect(.pulse, options: .repeating)
     }
 }
 
@@ -64,6 +63,63 @@ extension View {
 struct Hairline: View {
     var color: Color = Theme.divider
     var body: some View { Rectangle().fill(color).frame(height: 0.5) }
+}
+
+extension String {
+    /// Insert a single space after the first ":" for display (`A:B` → `A: B`). Visual only —
+    /// the stored `Group:Activity` form is unchanged, so parsing/round-tripping still works.
+    var asDisplayLabel: String {
+        guard let colon = firstIndex(of: ":") else { return self }
+        let after = index(after: colon)
+        guard after < endIndex, self[after] != " " else { return self }
+        return "\(self[...colon]) \(self[after...])"
+    }
+}
+
+/// A rotating disclosure chevron used to expand/collapse an entry's note.
+struct DisclosureChevron: View {
+    @Binding var expanded: Bool
+    var body: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+        } label: {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Theme.textQuaternary)
+                .rotationEffect(.degrees(expanded ? 90 : 0))
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(expanded ? "Hide note" : "Show note")
+    }
+}
+
+/// The revealed note block under an entry row (indented, in a subtle tinted box).
+struct EntryNoteView: View {
+    let note: String
+    var leadingInset: CGFloat = 34
+    var trailingInset: CGFloat = 14
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 7) {
+            Image(systemName: "note.text")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.top, 1)
+            Text(note)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Theme.fieldTint, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .padding(.leading, leadingInset)
+        .padding(.trailing, trailingInset)
+        .padding(.bottom, 10)
+    }
 }
 
 /// A small keyboard-key cap (e.g. `⌘⇧T`).

@@ -54,7 +54,7 @@ struct MenuBarPanel: View {
         HStack(spacing: 9) {
             if engine.runningEntry != nil {
                 PulsingDot(size: 8)
-                Text(engine.currentActivity?.label ?? "")
+                Text((engine.currentActivity?.label ?? "").asDisplayLabel)
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
@@ -67,7 +67,7 @@ struct MenuBarPanel: View {
                 Image(systemName: "pause.fill")
                     .font(.system(size: 10))
                     .foregroundStyle(Theme.textTertiary)
-                Text(engine.lastActivityLabel ?? "Paused")
+                Text((engine.lastActivityLabel ?? "Paused").asDisplayLabel)
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)

@@ -63,4 +63,10 @@ final class Entry {
     func duration(asOf now: Date = .now) -> TimeInterval {
         max(0, (end ?? now).timeIntervalSince(start))
     }
+
+    /// The note if it has non-whitespace content, else `nil`.
+    var trimmedNote: String? {
+        guard let note = note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else { return nil }
+        return note
+    }
 }

@@ -41,9 +41,9 @@ Timelet/
 ├── Store/TrackingStore.swift # TrackingStore protocol + TrackingEngine (ask timer, tick, save/continue, rounding, gating)
 ├── Settings/                 # AppSettings (UserDefaults-backed @Observable) · LoginItem (SMAppService)
 ├── Design/Theme.swift        # color / radius tokens from the handoff (light + tuned dark)
-├── Support/                  # Color(hex:) · Format · DurationParser · GlobalHotkey (Carbon) · SnapshotRunner
+├── Support/                  # Color(hex:) · Format · DurationParser · GlobalHotkey (Carbon) · IdleMonitor · SnapshotRunner
 └── Views/
-    ├── Main/                 # 2a NavigationSplitView: Sidebar · TodayView · ProjectCard · TrackingPill · AddEntry · EmptyState (2e)
+    ├── Main/                 # NavigationSplitView: Sidebar · DayView · WeekView · StatisticsView · ProjectCard · TrackingPill · Add/Edit sheets · EmptyState (2e)
     ├── CheckIn/              # 2b floating NSPanel + CheckInController + CheckInPanel (combobox autocomplete)
     ├── MenuBar/              # 2c MenuBarExtra label + popover
     └── Settings/             # 2d TabView: General · Shortcuts · Projects
@@ -53,15 +53,17 @@ Scenes: `WindowGroup` (main) · `MenuBarExtra(.window)` (live timer + quick acti
 the check-in is a borderless non-activating `NSPanel` summoned by the ask-timer, the global **⌘⇧T**, the
 menu bar, or the empty-state button.
 
-## v1 scope
+## Scope
 
-**Done (Must-haves):** local storage · `Project:Activity` entry with find-or-create + palette colors ·
-Today grouped list · empty state · recurring check-in with Continue + natural-language duration parsing ·
-settings · menu-bar extra · live timer · duration rounding · work-hours / DND gating · launch-at-login ·
-global shortcut.
+**Done:** local storage · `Group:Activity` entry with find-or-create + palette colors · Today grouped list
+with per-entry edit/delete · Day & Week views with ‹ › date navigation · Statistics (Swift Charts: by day /
+by project) · empty state · recurring check-in with Continue + autocomplete + natural-language duration ·
+idle detection ("Welcome back, you were away for X") · project edit / recolor / archive (sidebar + settings) ·
+menu-bar extra with snooze ("Stop asking for X") · live timer · duration rounding · work-hours / DND gating ·
+launch-at-login · global shortcut.
 
-**Deferred (stubbed / placeholder):** This Week + timesheet + Statistics/charts · full i18n (English/Français/Pirate
-scaffolded) · idle detection · custom shortcut recording · project editing/archiving · Supabase/auth · licensing.
+**Deferred:** timesheet view · full i18n (English/Français/Pirate scaffolded) · custom shortcut recording ·
+Supabase/auth · licensing · onboarding.
 
 ## Dev: visual verification
 

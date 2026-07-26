@@ -48,6 +48,7 @@ struct MainWindow: View {
                     .help(selection == .week ? "Previous week" : "Previous day")
                 Button(jumpLabel) { resetPeriod() }
                     .disabled(isCurrentPeriod)
+                    .padding(.horizontal, 8)
                 Button { shift(1) } label: { Image(systemName: "chevron.forward") }
                     .help(selection == .week ? "Next week" : "Next day")
             }

@@ -7,9 +7,10 @@ struct AddEntryView: View {
 
     @State private var text = ""
     @State private var durationText = ""
+    @State private var note = ""
     @FocusState private var focus: Field?
 
-    private enum Field { case task, duration }
+    private enum Field { case task, duration, note }
 
     private var parsed: TimeInterval? { DurationParser.seconds(from: durationText) }
     private var canSave: Bool {
@@ -37,6 +38,11 @@ struct AddEntryView: View {
                                 .monospacedDigit()
                         }
                     }
+                }
+                labeled("Notes") {
+                    TextField("Optional — details, next-day plan…", text: $note, axis: .vertical)
+                        .lineLimit(2...5)
+                        .focused($focus, equals: .note)
                 }
             }
 
@@ -68,7 +74,7 @@ struct AddEntryView: View {
 
     private func add() {
         guard let parsed else { return }
-        engine.addManualEntry(text: text, duration: parsed)
+        engine.addManualEntry(text: text, duration: parsed, note: note)
         dismiss()
     }
 }

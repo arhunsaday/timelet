@@ -50,9 +50,13 @@ enum Theme {
         "007AFF", // blue
         "AF52DE", // purple
         "34C759", // green
-        "FF375F", // pink
-        "5AC8FA", // cyan
+        "FF3B30", // red
         "FFCC00", // yellow
+        "5856D6", // indigo
+        "32ADE6", // cyan
+        "00C7BE", // mint
+        "A2845E", // brown
+        "FF2D55", // pink
     ]
 
     /// App-icon gradient (#FFB43A → #FF9500, 160°).

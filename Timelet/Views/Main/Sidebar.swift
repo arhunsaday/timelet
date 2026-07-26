@@ -18,8 +18,8 @@ struct Sidebar: View {
     var body: some View {
         let totals = DaySummary.projectTotals(entries: entries, day: engine.now, now: engine.now)
         List(selection: $selection) {
-            Label("Today", systemImage: "calendar").tag(SidebarItem.today)
-            Label("This Week", systemImage: "calendar.badge.clock").tag(SidebarItem.week)
+            Label("Today", systemImage: "smallcircle.circle").tag(SidebarItem.today)
+            Label("This Week", systemImage: "calendar").tag(SidebarItem.week)
             Label("Statistics", systemImage: "chart.bar").tag(SidebarItem.statistics)
 
             Section("Projects") {

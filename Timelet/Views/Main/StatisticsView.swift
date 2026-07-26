@@ -14,10 +14,20 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
     }
 }
 
-struct DailyTotal: Identifiable {
+/// One project's colored slice of a day's stacked bar.
+struct DaySegment: Identifiable {
+    let id: String
+    let colorHex: String
+    let hours: Double
+}
+
+/// One day's stacked bar (all its project segments).
+struct DayBar: Identifiable {
     let id: Date
     let date: Date
-    let hours: Double
+    let total: TimeInterval
+    let segments: [DaySegment]
+    var isEmpty: Bool { total <= 0 }
 }
 
 struct ProjectTotal: Identifiable {
@@ -29,9 +39,14 @@ struct ProjectTotal: Identifiable {
 }
 
 struct StatsModel {
-    let daily: [DailyTotal]
+    let days: [DayBar]
     let projects: [ProjectTotal]
     let total: TimeInterval
+    let elapsedDays: Int
+    let maxDayHours: Double
+
+    /// Average over calendar days elapsed in the period (so zero days count).
+    var avgPerDay: TimeInterval { elapsedDays > 0 ? total / Double(elapsedDays) : 0 }
 
     static func build(entries: [Entry], interval: DateInterval, now: Date) -> StatsModel {
         let cal = Calendar.current
@@ -39,19 +54,7 @@ struct StatsModel {
             $0.end != nil && interval.contains($0.start) && !($0.activity?.project?.isArchived ?? false)
         }
 
-        var byDay: [Date: TimeInterval] = [:]
-        var cursor = cal.startOfDay(for: interval.start)
-        while cursor < interval.end {
-            byDay[cursor] = 0
-            cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? interval.end
-        }
-        for entry in completed {
-            byDay[cal.startOfDay(for: entry.start), default: 0] += entry.duration(asOf: now)
-        }
-        let daily = byDay
-            .map { DailyTotal(id: $0.key, date: $0.key, hours: $0.value / 3600) }
-            .sorted { $0.date < $1.date }
-
+        // Per-project totals (also drives a consistent stacking order across days).
         var byProject: [PersistentIdentifier: (name: String, color: String, total: TimeInterval)] = [:]
         for entry in completed {
             guard let project = entry.activity?.project else { continue }
@@ -60,12 +63,38 @@ struct StatsModel {
         let projects = byProject
             .map { ProjectTotal(id: $0.key, name: $0.value.name, colorHex: $0.value.color, seconds: $0.value.total) }
             .sorted { $0.seconds > $1.seconds }
+        let order = Dictionary(uniqueKeysWithValues: projects.enumerated().map { ($0.element.id, $0.offset) })
 
-        return StatsModel(daily: daily, projects: projects, total: completed.reduce(0) { $0 + $1.duration(asOf: now) })
+        var days: [DayBar] = []
+        var cursor = cal.startOfDay(for: interval.start)
+        while cursor < interval.end {
+            var perProject: [PersistentIdentifier: (color: String, seconds: TimeInterval)] = [:]
+            for entry in completed where cal.isDate(entry.start, inSameDayAs: cursor) {
+                guard let project = entry.activity?.project else { continue }
+                perProject[project.persistentModelID, default: (project.colorHex, 0)].seconds += entry.duration(asOf: now)
+            }
+            let total = perProject.values.reduce(0) { $0 + $1.seconds }
+            // Emit smallest-ranked project first (bottom) so the biggest sits on top.
+            let segments = perProject
+                .sorted { (order[$0.key] ?? .max) > (order[$1.key] ?? .max) }
+                .map { DaySegment(id: "\(cursor.timeIntervalSince1970)-\($0.key.hashValue)",
+                                  colorHex: $0.value.color, hours: $0.value.seconds / 3600) }
+            days.append(DayBar(id: cursor, date: cursor, total: total, segments: segments))
+            cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? interval.end
+        }
+
+        let today = cal.startOfDay(for: now)
+        return StatsModel(
+            days: days,
+            projects: projects,
+            total: completed.reduce(0) { $0 + $1.duration(asOf: now) },
+            elapsedDays: max(1, days.filter { $0.date <= today }.count),
+            maxDayHours: days.map { $0.total / 3600 }.max() ?? 0
+        )
     }
 }
 
-/// Statistics (2a detail): time by day + by project for the selected period.
+/// Statistics (2a detail): a stacked-by-project weekly bar chart with total + average.
 struct StatisticsView: View {
     var body: some View {
         ScrollView { StatisticsContent() }
@@ -74,7 +103,6 @@ struct StatisticsView: View {
     }
 }
 
-/// The scrollable body of Statistics, extracted so it renders outside a ScrollView.
 struct StatisticsContent: View {
     @Environment(TrackingEngine.self) private var engine
     @Query(sort: \Entry.start) private var entries: [Entry]
@@ -84,56 +112,73 @@ struct StatisticsContent: View {
         let now = engine.now
         let model = StatsModel.build(entries: entries, interval: period.interval(now: now), now: now)
 
-        VStack(alignment: .leading, spacing: 16) {
-                Picker("", selection: $period) {
-                    ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 240)
+        VStack(alignment: .leading, spacing: 18) {
+            header(model)
+            dailyChart(model)
 
-                HStack(alignment: .firstTextBaseline, spacing: 9) {
-                    Text(Format.duration(model.total))
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .monospacedDigit()
-                        .tracking(-0.5)
-                    Text("tracked")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.textTertiary)
-                }
-                .padding(.horizontal, 4)
-
-                if model.total == 0 {
-                    empty
-                } else {
-                    card("By day") { dailyChart(model.daily) }
-                    card("By project") { projectChart(model.projects) }
-                }
+            if !model.projects.isEmpty {
+                card("By project") { projectChart(model.projects) }
             }
-            .padding(20)
+        }
+        .padding(20)
     }
 
-    private func dailyChart(_ daily: [DailyTotal]) -> some View {
-        Chart(daily) { day in
-            BarMark(
-                x: .value("Day", day.date, unit: .day),
-                y: .value("Hours", day.hours)
-            )
-            .foregroundStyle(Theme.accent.gradient)
-            .cornerRadius(4)
+    // MARK: Header (range · total · avg/day)
+
+    private func header(_ model: StatsModel) -> some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(Format.periodRange(period.interval(now: engine.now)))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .tracking(0.5)
+                Text(Format.duration(model.total))
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .monospacedDigit()
+                    .tracking(-0.5)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("avg / day")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textTertiary)
+                Text(Format.duration(model.avgPerDay))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .monospacedDigit()
+            }
         }
+    }
+
+    // MARK: Charts
+
+    private func dailyChart(_ model: StatsModel) -> some View {
+        let stub = max(0.18, model.maxDayHours * 0.04)
+        return Chart {
+            ForEach(model.days) { day in
+                if day.isEmpty {
+                    BarMark(x: .value("Day", day.date, unit: .day), y: .value("Hours", stub))
+                        .foregroundStyle(Theme.textQuaternary.opacity(0.22))
+                        .cornerRadius(5)
+                } else {
+                    ForEach(day.segments) { segment in
+                        BarMark(x: .value("Day", day.date, unit: .day), y: .value("Hours", segment.hours))
+                            .foregroundStyle(Color(hex: segment.colorHex))
+                            .cornerRadius(5)
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
         .chartXAxis {
             AxisMarks(values: .stride(by: .day, count: period == .week ? 1 : 5)) { _ in
-                AxisGridLine()
                 AxisValueLabel(
-                    format: period == .week
-                        ? .dateTime.weekday(.abbreviated)
-                        : .dateTime.day()
+                    format: period == .week ? .dateTime.weekday(.abbreviated) : .dateTime.day()
                 )
             }
         }
-        .frame(height: 200)
+        .frame(height: 240)
     }
 
     private func projectChart(_ projects: [ProjectTotal]) -> some View {
@@ -165,17 +210,5 @@ struct StatisticsContent: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .groupedCard()
-    }
-
-    private var empty: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "chart.bar")
-                .font(.system(size: 34))
-                .foregroundStyle(Theme.textQuaternary)
-            Text("No data for this period")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 240)
     }
 }

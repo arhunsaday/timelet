@@ -30,11 +30,15 @@ struct ProjectEditorView: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 13))
                 }
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Color")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Theme.textTertiary)
-                    HStack(spacing: 10) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 30), spacing: 12)],
+                        alignment: .leading,
+                        spacing: 12
+                    ) {
                         ForEach(Theme.palette, id: \.self) { hex in
                             swatch(hex)
                         }

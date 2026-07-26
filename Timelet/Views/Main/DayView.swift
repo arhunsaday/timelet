@@ -118,7 +118,7 @@ private struct InProgressCard: View {
     var body: some View {
         HStack(spacing: 10) {
             PulsingDot(size: 8)
-            Text(engine.currentActivity?.label ?? engine.lastActivityLabel ?? "Tracking")
+            Text((engine.currentActivity?.label ?? engine.lastActivityLabel ?? "Tracking").asDisplayLabel)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
             Spacer()

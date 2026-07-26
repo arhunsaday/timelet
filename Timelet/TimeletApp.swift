@@ -112,7 +112,7 @@ struct TimeletApp: App {
             Divider()
             Button("Pause / Resume Tracking") { app.engine.togglePause() }
                 .keyboardShortcut("t", modifiers: .command)
-            Button("Continue Previous") { app.engine.continuePrevious() }
+            Button("Continue") { app.engine.continuePrevious() }
                 .keyboardShortcut("t", modifiers: [.command, .option])
         }
     }

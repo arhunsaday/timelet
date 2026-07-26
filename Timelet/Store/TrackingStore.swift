@@ -13,10 +13,10 @@ protocol TrackingStore: AnyObject {
     var lastActivityLabel: String? { get }
     var elapsed: TimeInterval { get }
 
-    func checkInSave(text: String)
+    func checkInSave(text: String, note: String?)
     func continuePrevious()
-    func addManualEntry(text: String, duration: TimeInterval)
-    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date)
+    func addManualEntry(text: String, duration: TimeInterval, note: String?)
+    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date, note: String?)
     func deleteEntry(_ entry: Entry)
     func togglePause()
     func stopTracking()
@@ -65,16 +65,21 @@ final class TrackingEngine: TrackingStore {
 
     // MARK: - Public operations
 
-    func checkInSave(text: String) {
+    func checkInSave(text: String, note: String?) {
         let stamp = Date.now
+        let cleanNote = Self.cleaned(note)
         let activity = resolveActivity(from: text)
         if let current = currentActivity, let activity,
            current.persistentModelID == activity.persistentModelID {
+            if let cleanNote { runningEntry?.note = cleanNote } // same task → just update the note
             continuePrevious()
             return
         }
         closeRunningEntry(at: stamp)
-        if let activity { openRunningEntry(for: activity, at: stamp) }
+        if let activity {
+            openRunningEntry(for: activity, at: stamp)
+            runningEntry?.note = cleanNote
+        }
         isPaused = false
         save()
         startTick()
@@ -92,19 +97,26 @@ final class TrackingEngine: TrackingStore {
         save()
     }
 
-    func addManualEntry(text: String, duration: TimeInterval) {
+    func addManualEntry(text: String, duration: TimeInterval, note: String?) {
         guard let activity = resolveActivity(from: text), duration > 0 else { return }
         let end = Date.now
-        context.insert(Entry(start: end.addingTimeInterval(-duration), end: end, activity: activity))
+        context.insert(Entry(start: end.addingTimeInterval(-duration), end: end,
+                             activity: activity, note: Self.cleaned(note)))
         save()
     }
 
-    /// Edit a completed block: reassign its activity/group and adjust its interval.
-    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date) {
+    /// Edit a completed block: reassign its activity/group, adjust its interval, and set its note.
+    func updateEntry(_ entry: Entry, text: String, start: Date, end: Date, note: String?) {
         if let activity = resolveActivity(from: text) { entry.activity = activity }
         entry.start = start
         entry.end = max(start, end)
+        entry.note = Self.cleaned(note)
         save()
+    }
+
+    private static func cleaned(_ note: String?) -> String? {
+        guard let note = note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else { return nil }
+        return note
     }
 
     func deleteEntry(_ entry: Entry) {
@@ -379,10 +391,11 @@ final class TrackingEngine: TrackingStore {
         onIdleReturn?(awayStart.distance(to: .now))
     }
 
-    /// Log the away period as `text`, then resume the previous task from now.
-    func logIdle(text: String) {
+    /// Log the away period as `text` (with an optional note), then resume the previous task.
+    func logIdle(text: String, note: String?) {
         if let pending = pendingIdle, let activity = resolveActivity(from: text) {
-            context.insert(Entry(start: pending.interval.start, end: pending.interval.end, activity: activity))
+            context.insert(Entry(start: pending.interval.start, end: pending.interval.end,
+                                 activity: activity, note: Self.cleaned(note)))
         }
         finishIdle()
     }

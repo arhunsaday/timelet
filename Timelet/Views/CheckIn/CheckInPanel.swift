@@ -25,7 +25,7 @@ enum CheckInMode {
     }
     var secondaryTitle: String {
         switch self {
-        case .regular: "Continue previous"
+        case .regular: "Continue"
         case .idle: "Discard"
         }
     }
@@ -36,16 +36,18 @@ enum CheckInMode {
 struct CheckInPanel: View {
     let engine: TrackingEngine
     let mode: CheckInMode
-    let onPrimary: (String) -> Void
+    let onPrimary: (String, String?) -> Void
     let onSecondary: () -> Void
 
     @State private var text: String
+    @State private var note = ""
     @State private var hasEdited = false
     @State private var selection: Int?
     @FocusState private var focused: Bool
+    @FocusState private var noteFocused: Bool
 
     init(engine: TrackingEngine, mode: CheckInMode,
-         onPrimary: @escaping (String) -> Void, onSecondary: @escaping () -> Void) {
+         onPrimary: @escaping (String, String?) -> Void, onSecondary: @escaping () -> Void) {
         self.engine = engine
         self.mode = mode
         self.onPrimary = onPrimary
@@ -58,6 +60,7 @@ struct CheckInPanel: View {
             header
             field
             if !suggestions.isEmpty { suggestionList }
+            noteField
             buttons
         }
         .frame(width: 340)
@@ -66,8 +69,11 @@ struct CheckInPanel: View {
             RoundedRectangle(cornerRadius: Radius.panel, style: .continuous)
                 .strokeBorder(.black.opacity(0.10), lineWidth: 0.5)
         )
-        .onExitCommand { onSecondary() } // Escape → Continue previous / Discard
-        .onAppear { focused = true }
+        .onAppear {
+            // Focus the field. Defer once so it lands after the panel becomes key.
+            focused = true
+            DispatchQueue.main.async { focused = true }
+        }
     }
 
     // MARK: Header
@@ -120,6 +126,27 @@ struct CheckInPanel: View {
         .padding(.top, 16)
     }
 
+    // MARK: Note (optional description)
+
+    private var noteField: some View {
+        TextField("Add a note (optional)…", text: $note, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.system(size: 12.5))
+            .foregroundStyle(Theme.textPrimary)
+            .lineLimit(1...3)
+            .focused($noteFocused)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.insetRow.opacity(0.55), in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.field, style: .continuous)
+                    .strokeBorder(noteFocused ? Theme.accent.opacity(0.35) : Theme.border,
+                                  lineWidth: noteFocused ? 2 : 0.5)
+            )
+            .padding(.horizontal, 22)
+            .padding(.top, 8)
+    }
+
     // MARK: Suggestions (combobox autocomplete)
 
     private var suggestions: [String] {
@@ -134,7 +161,7 @@ struct CheckInPanel: View {
             ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
                 let (project, activity) = TrackingEngine.parse(suggestion)
                 Button {
-                    onPrimary(suggestion)
+                    onPrimary(suggestion, note.isEmpty ? nil : note)
                 } label: {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -166,9 +193,14 @@ struct CheckInPanel: View {
     private var buttons: some View {
         HStack(spacing: 8) {
             Button { onSecondary() } label: {
-                Text(mode.secondaryTitle).frame(maxWidth: .infinity)
+                HStack(spacing: 5) {
+                    Text(mode.secondaryTitle)
+                    Text("⎋").opacity(0.6)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(SecondaryButtonStyle())
+            .keyboardShortcut(.cancelAction)
             Button(action: primary) {
                 HStack(spacing: 5) {
                     Text(mode.primaryTitle)
@@ -192,11 +224,13 @@ struct CheckInPanel: View {
     }
 
     private func primary() {
+        let chosen: String
         if let selection, suggestions.indices.contains(selection) {
-            onPrimary(suggestions[selection])
+            chosen = suggestions[selection]
         } else {
-            onPrimary(text)
+            chosen = text
         }
+        onPrimary(chosen, note.isEmpty ? nil : note)
     }
 
     private func moveSelection(_ direction: MoveCommandDirection) {

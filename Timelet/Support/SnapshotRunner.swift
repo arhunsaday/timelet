@@ -48,7 +48,7 @@ enum SnapshotRunner {
             // 2b — check-in panel.
             renderApp(
                 CheckInPanel(engine: app.engine, mode: .regular(intervalMinutes: app.settings.askIntervalMinutes),
-                             onPrimary: { _ in }, onSecondary: {}),
+                             onPrimary: { _, _ in }, onSecondary: {}),
                 app: app, to: dir.appendingPathComponent("2b_checkin.png"))
 
             // 2c — menu-bar popover.
@@ -78,13 +78,39 @@ enum SnapshotRunner {
                 renderApp(ProjectEditorView(project: project), app: app,
                           to: dir.appendingPathComponent("3b_project_editor.png"))
             }
-            renderApp(WeekView(weekDate: app.engine.now).frame(width: 700, height: 760),
+            let weekModel = WeekModel.build(entries: entries, weekDate: app.engine.now, now: app.engine.now)
+            renderApp(WeekContent(model: weekModel, now: app.engine.now)
+                        .padding(20).frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3c_week.png"))
-            renderApp(StatisticsView().frame(width: 700, height: 820),
+            renderApp(StatisticsContent()
+                        .frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3d_stats.png"))
             renderApp(CheckInPanel(engine: app.engine, mode: .idle(awaySeconds: 12 * 60),
-                                   onPrimary: { _ in }, onSecondary: {}),
+                                   onPrimary: { _, _ in }, onSecondary: {}),
                       app: app, to: dir.appendingPathComponent("3e_idle.png"))
+
+            renderApp(AddEntryView(), app: app, to: dir.appendingPathComponent("3g_add.png"))
+
+            // Note display demo (an expanded row) — the live store may have no notes yet.
+            renderApp(
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        Text("13:30 – 15:40").font(.system(size: 13)).foregroundStyle(Theme.textTertiary)
+                            .monospacedDigit().frame(width: 118, alignment: .leading)
+                        Text("Electron refactor").font(.system(size: 13)).foregroundStyle(Theme.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("2h 10m").font(.system(size: 13, weight: .medium)).monospacedDigit()
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.textQuaternary).frame(width: 20, height: 20)
+                    }
+                    .padding(.leading, 34).padding(.trailing, 8).padding(.vertical, 10)
+                    EntryNoteView(note: "Finished the IPC bridge. Tomorrow's daily: wire up error handling + add tests.",
+                                  leadingInset: 34)
+                }
+                .groupedCard()
+                .frame(width: 620)
+                .padding(30).background(Theme.contentBackground),
+                app: app, to: dir.appendingPathComponent("3f_note.png"))
 
             try? await Task.sleep(nanoseconds: 200_000_000)
             NSApp.terminate(nil)
@@ -119,8 +145,8 @@ private struct SidebarSnapshot: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            navRow("Today", "calendar", selected: true)
-            navRow("This Week", "calendar.badge.clock", selected: false)
+            navRow("Today", "smallcircle.circle", selected: true)
+            navRow("This Week", "calendar", selected: false)
             navRow("Statistics", "chart.bar", selected: false)
 
             Text("Projects")

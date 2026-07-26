@@ -24,7 +24,7 @@ final class CheckInController {
         show(CheckInPanel(
             engine: engine,
             mode: .regular(intervalMinutes: settings.askIntervalMinutes),
-            onPrimary: { [weak self] text in engine.checkInSave(text: text); self?.dismiss() },
+            onPrimary: { [weak self] text, note in engine.checkInSave(text: text, note: note); self?.dismiss() },
             onSecondary: { [weak self] in engine.continuePrevious(); self?.dismiss() }
         ))
     }
@@ -35,7 +35,7 @@ final class CheckInController {
         show(CheckInPanel(
             engine: engine,
             mode: .idle(awaySeconds: awaySeconds),
-            onPrimary: { [weak self] text in engine.logIdle(text: text); self?.dismiss() },
+            onPrimary: { [weak self] text, note in engine.logIdle(text: text, note: note); self?.dismiss() },
             onSecondary: { [weak self] in engine.discardIdle(); self?.dismiss() }
         ))
     }

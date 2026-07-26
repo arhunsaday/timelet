@@ -107,4 +107,10 @@ enum Format {
         let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: interval.end) ?? interval.end
         return "\(monthDay(interval.start)) – \(monthDay(lastDay))"
     }
+
+    /// `JUL 15 – JUL 21` (inclusive last day of the interval).
+    static func periodRange(_ interval: DateInterval) -> String {
+        let lastDay = Calendar.current.date(byAdding: .day, value: -1, to: interval.end) ?? interval.end
+        return "\(monthDay(interval.start)) – \(monthDay(lastDay))".uppercased()
+    }
 }

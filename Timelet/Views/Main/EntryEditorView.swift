@@ -9,6 +9,7 @@ struct EntryEditorView: View {
     @State private var text: String
     @State private var start: Date
     @State private var end: Date
+    @State private var note: String
     @State private var confirmingDelete = false
     @FocusState private var taskFocused: Bool
 
@@ -17,6 +18,7 @@ struct EntryEditorView: View {
         _text = State(initialValue: entry.activity?.label ?? "")
         _start = State(initialValue: entry.start)
         _end = State(initialValue: entry.end ?? .now)
+        _note = State(initialValue: entry.note ?? "")
     }
 
     private var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
@@ -49,6 +51,11 @@ struct EntryEditorView: View {
                             .monospacedDigit()
                     }
                 }
+                labeled("Notes") {
+                    TextField("Optional — details, next-day plan…", text: $note, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...6)
+                }
             }
 
             HStack {
@@ -65,7 +72,7 @@ struct EntryEditorView: View {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Save") {
-                    engine.updateEntry(entry, text: text, start: start, end: end)
+                    engine.updateEntry(entry, text: text, start: start, end: end, note: note)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)

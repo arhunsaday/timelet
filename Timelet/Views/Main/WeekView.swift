@@ -80,7 +80,7 @@ struct WeekView: View {
 
     private var empty: some View {
         VStack(spacing: 12) {
-            Image(systemName: "calendar.badge.clock")
+            Image(systemName: "calendar")
                 .font(.system(size: 34))
                 .foregroundStyle(Theme.textQuaternary)
             Text("No time tracked this week")
@@ -91,6 +91,33 @@ struct WeekView: View {
                 .foregroundStyle(Theme.textTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// The scrollable body of This Week, extracted so it renders outside a ScrollView.
+struct WeekContent: View {
+    let model: WeekModel
+    let now: Date
+    var onSelect: (Entry) -> Void = { _ in }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 9) {
+                Text(Format.duration(model.total))
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .monospacedDigit()
+                    .tracking(-0.5)
+                Text("this week")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .padding(.horizontal, 4)
+
+            ForEach(model.days) { day in
+                DayCard(day: day, now: now, onSelect: onSelect)
+            }
+        }
     }
 }
 
@@ -128,31 +155,51 @@ private struct DayCard: View {
 
             ForEach(Array(day.rows.enumerated()), id: \.element.id) { index, row in
                 if index > 0 { Hairline() }
-                Button { onSelect(row.entry) } label: {
-                    HStack(spacing: 10) {
-                        ColorSwatch(hex: row.colorHex, size: 9)
-                        Text(Format.timeRange(row.start, row.end))
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(Theme.textTertiary)
-                            .monospacedDigit()
-                            .frame(width: 108, alignment: .leading)
-                        Text(row.label)
-                            .font(.system(size: 12.5))
-                            .foregroundStyle(Theme.textPrimary)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(Format.duration(row.total))
-                            .font(.system(size: 12.5, weight: .medium))
-                            .foregroundStyle(Theme.textPrimary)
-                            .monospacedDigit()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                WeekEntryRow(row: row, onEdit: { onSelect(row.entry) })
             }
         }
         .groupedCard()
+    }
+}
+
+private struct WeekEntryRow: View {
+    let row: WeekRow
+    let onEdit: () -> Void
+    @State private var expanded = false
+    @State private var hovering = false
+
+    var body: some View {
+        let note = row.entry.trimmedNote
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                ColorSwatch(hex: row.colorHex, size: 9)
+                Text(Format.timeRange(row.start, row.end))
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Theme.textTertiary)
+                    .monospacedDigit()
+                    .frame(width: 108, alignment: .leading)
+                Text(row.label.asDisplayLabel)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(Format.duration(row.total))
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .monospacedDigit()
+                if note != nil { DisclosureChevron(expanded: $expanded) }
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, note != nil ? 8 : 14)
+            .padding(.vertical, 9)
+            .background(hovering ? Theme.accent.opacity(0.06) : .clear)
+            .contentShape(Rectangle())
+            .onTapGesture { onEdit() }
+            .onHover { hovering = $0 }
+
+            if let note, expanded {
+                EntryNoteView(note: note, leadingInset: 33)
+            }
+        }
     }
 }
