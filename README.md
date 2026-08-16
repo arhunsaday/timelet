@@ -46,8 +46,12 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
+Or, without tagging locally: **Actions → Release → Run workflow**, enter the version and tick
+**publish** — `gh release create` creates the tag at that commit. Leaving **publish** unticked just
+builds and uploads the artifact, which is handy for testing a change to the workflow itself.
+
 The zip is attached to the [release](../../releases) and also kept as a workflow artifact for 30 days.
-A tag containing a hyphen (`v1.2.3-rc1`) is published as a pre-release.
+A version containing a hyphen (`v1.2.3-rc1`) is published as a pre-release.
 
 ### No Apple Developer account
 
