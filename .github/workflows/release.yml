@@ -1,0 +1,249 @@
+name: Release
+
+# Builds a distributable macOS .app and publishes it as a GitHub Release.
+#
+# Normal path — push a version tag:
+#
+#   git tag v1.2.3 && git push origin v1.2.3
+#
+# Or run it from the Actions tab ("Run workflow"), give it a version, and tick
+# "publish" — `gh release create` creates the tag for you.
+#
+# No paid Apple Developer account is involved: the app is ad-hoc signed
+# ("Sign to Run Locally") and NOT notarized, so the install instructions in the
+# release body explain how to get past Gatekeeper.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 1.2.3"
+        required: true
+        default: "0.0.0-dev"
+      publish:
+        description: "Publish a GitHub Release (creates tag v<version> at this commit)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create the release, upload the .zip, create the tag
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & publish macOS app
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags so the changelog can diff against the previous tag
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"   # v1.2.3 -> 1.2.3
+            publish=true
+          else
+            version="${INPUT_VERSION}"
+            publish="${INPUT_PUBLISH:-false}"
+          fi
+
+          if [ -z "$version" ]; then
+            echo "::error::Could not determine a version to build."
+            exit 1
+          fi
+
+          # Anything with a hyphen (1.2.3-rc1, 0.0.0-dev) is a pre-release.
+          case "$version" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
+
+          {
+            echo "version=$version"
+            echo "tag=v${version}"
+            echo "publish=$publish"
+            echo "prerelease=$prerelease"
+            echo "zip_name=Timelet-${version}-macOS-universal.zip"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Timelet $version (publish=$publish, prerelease=$prerelease)"
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          echo "Xcode path: $(xcode-select -p)"
+
+      - name: Install XcodeGen
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          xcodebuild -list -project Timelet.xcodeproj
+
+      - name: Build (Release, universal binary)
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project Timelet.xcodeproj \
+            -scheme Timelet \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="${{ steps.version.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Ad-hoc sign & verify
+        id: app
+        run: |
+          set -euo pipefail
+          app="$(find build/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          if [ -z "$app" ]; then
+            echo "::error::No .app was produced. Contents of build/Build/Products:"
+            find build/Build/Products -maxdepth 3 || true
+            exit 1
+          fi
+          echo "Built: $app"
+
+          # arm64 binaries must carry at least an ad-hoc signature or macOS
+          # refuses to launch them. Re-sign the whole bundle so the signature
+          # definitely covers the final universal binary and its resources.
+          codesign --force --sign - --timestamp=none "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          lipo -info "$app/Contents/MacOS/"* || true
+
+          echo "path=$app" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          zip="${{ steps.version.outputs.zip_name }}"
+          # ditto (not `zip`) preserves bundle symlinks, resource forks and the
+          # code signature.
+          ditto -c -k --sequesterRsrc --keepParent "${{ steps.app.outputs.path }}" "$zip"
+          sha="$(shasum -a 256 "$zip" | awk '{print $1}')"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          ls -lh "$zip"
+          echo "sha256: $sha"
+
+      # Always available, even for dry runs or if publishing fails.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Timelet-${{ steps.version.outputs.version }}-macOS
+          path: ${{ steps.version.outputs.zip_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write release notes
+        if: steps.version.outputs.publish == 'true'
+        env:
+          ZIP: ${{ steps.version.outputs.zip_name }}
+          SHA256: ${{ steps.package.outputs.sha256 }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # Quoted heredoc: no shell expansion, so backticks and $ stay literal.
+          # Placeholders are substituted afterwards from the env vars above.
+          cat > RELEASE_NOTES.md <<'EOF'
+          ### Download
+
+          **@ZIP@** below — universal (Apple Silicon + Intel), requires macOS 14 Sonoma or later.
+
+          ### Install
+
+          1. Unzip and drag **Timelet.app** into `/Applications`.
+          2. This build is **ad-hoc signed and not notarized** (there is no paid Apple
+             Developer account behind it), so macOS blocks it on first launch. Clear the
+             quarantine flag it picked up from the download:
+
+          ```bash
+          xattr -dr com.apple.quarantine /Applications/Timelet.app
+          ```
+
+          Then open it normally.
+
+          Prefer not to use Terminal? Open the app once and let it get blocked, then go to
+          **System Settings → Privacy & Security** and click **Open Anyway**.
+
+          ### Verify
+
+          ```
+          SHA-256  @SHA256@
+          ```
+          EOF
+
+          # Substitute placeholders (| as the sed delimiter — values contain no |).
+          sed -i '' -e "s|@ZIP@|${ZIP}|g" -e "s|@SHA256@|${SHA256}|g" RELEASE_NOTES.md
+
+          # Changelog since the previous tag, if there is one. On a tag build the
+          # tag exists, so walk back from it; on a manual run it does not yet.
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            from="${TAG}^"; to="${TAG}"
+          else
+            from="HEAD"; to="HEAD"
+          fi
+          prev="$(git describe --tags --abbrev=0 "$from" 2>/dev/null || true)"
+          if [ -n "$prev" ]; then
+            {
+              echo
+              echo "### Changes since ${prev}"
+              echo
+              git log --no-merges --pretty='- %s (%h)' "${prev}..${to}"
+            } >> RELEASE_NOTES.md
+          fi
+
+          {
+            echo
+            echo "---"
+            echo "Built from \`${GITHUB_SHA}\` by [run #${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          } >> RELEASE_NOTES.md
+
+          cat RELEASE_NOTES.md
+
+      - name: Publish release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.version.outputs.zip_name }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TITLE: Timelet ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          args=(--title "$TITLE" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA")
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          # Creates the tag too, if it does not already exist.
+          gh release create "$TAG" "$ZIP" "${args[@]}"
+          echo "Published ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"

@@ -39,3 +39,20 @@ targets:
         INFOPLIST_KEY_LSUIElement: NO
         INFOPLIST_KEY_NSHumanReadableCopyright: "Timelet"
         INFOPLIST_KEY_CFBundleDisplayName: Timelet
+
+# Declared explicitly so a shared scheme is written to the generated project.
+# Xcode creates one implicitly when you open the project, but CI never does —
+# without this `xcodebuild -scheme Timelet` fails on a fresh checkout.
+schemes:
+  Timelet:
+    build:
+      targets:
+        Timelet: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
