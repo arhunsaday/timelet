@@ -27,13 +27,13 @@ struct WeekModel {
         let cal = Calendar.current
         let interval = Format.weekInterval(weekDate)
         let completed = entries.filter { entry in
-            guard let _ = entry.end else { return false }
             return interval.contains(entry.start) && !(entry.activity?.project?.isArchived ?? false)
         }
 
         var byDay: [Date: [WeekRow]] = [:]
         for entry in completed {
-            guard let activity = entry.activity, let project = activity.project, let end = entry.end else { continue }
+            guard let activity = entry.activity, let project = activity.project else { continue }
+            let end = entry.end ?? now
             let dayStart = cal.startOfDay(for: entry.start)
             let row = WeekRow(
                 id: entry.persistentModelID, entry: entry, label: activity.label,

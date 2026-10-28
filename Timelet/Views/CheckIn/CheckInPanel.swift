@@ -54,7 +54,9 @@ struct CheckInPanel: View {
             focus = .task
             DispatchQueue.main.async { focus = .task } // lands after the panel becomes key
         }
-        .background(shortcutButtons)
+        .onReceive(NotificationCenter.default.publisher(for: FloatingPanel.pickNotification)) { note in
+            if let index = note.userInfo?["index"] as? Int { pick(index) }
+        }
     }
 
     // MARK: Derived state
@@ -347,18 +349,6 @@ struct CheckInPanel: View {
         .padding(.horizontal, 18)
         .padding(.top, 12)
         .padding(.bottom, 14)
-    }
-
-    /// Invisible buttons that carry ⌘1…⌘5.
-    private var shortcutButtons: some View {
-        ZStack {
-            ForEach(0..<5, id: \.self) { i in
-                Button("") { pick(i) }
-                    .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
-            }
-        }
-        .opacity(0)
-        .allowsHitTesting(false)
     }
 
     // MARK: Actions

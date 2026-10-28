@@ -51,7 +51,7 @@ struct MainWindow: View {
         }
         ToolbarItemGroup(placement: .primaryAction) {
             TrackingPill()
-            Button { checkIn.present() } label: { Label("Check in", systemImage: "text.cursor") }
+            Button { checkIn.present() } label: { Label("Check in", systemImage: "timer") }
                 .help("Check in — switch or start a task (⌘K)")
             Button { ui.requestAddEntry() } label: { Label("Add time", systemImage: "plus") }
                 .help("Add time manually (⌘N)")

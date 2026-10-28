@@ -27,4 +27,16 @@ final class FloatingPanel: NSPanel {
 
     override var canBecomeKey: Bool { acceptsKey }
     override var canBecomeMain: Bool { false }
+
+    /// ⌘1…⌘9 pick a suggestion. Handled here, before the main menu, whose ⌘1–3 switch views.
+    static let pickNotification = Notification.Name("TimeletCheckInPick")
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           let ch = event.charactersIgnoringModifiers, let digit = Int(ch), (1...9).contains(digit) {
+            NotificationCenter.default.post(name: Self.pickNotification, object: self, userInfo: ["index": digit - 1])
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 }

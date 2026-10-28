@@ -51,7 +51,7 @@ struct StatsModel {
     static func build(entries: [Entry], interval: DateInterval, now: Date) -> StatsModel {
         let cal = Calendar.current
         let completed = entries.filter {
-            $0.end != nil && interval.contains($0.start) && !($0.activity?.project?.isArchived ?? false)
+            interval.contains($0.start) && !($0.activity?.project?.isArchived ?? false)
         }
 
         // Per-project totals (also drives a consistent stacking order across days).

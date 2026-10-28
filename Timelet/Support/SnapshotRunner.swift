@@ -11,6 +11,60 @@ enum SnapshotRunner {
 
     @MainActor
     static func runIfNeeded(app: AppModel) {
+        // Dev: drive the real UI with key events posted to Timelet's own windows, logging the
+        // engine after each step. `TIMELET_SCRIPT="show:checkin;type:elec;key:return;log"`.
+        if !didRun, let script = ProcessInfo.processInfo.environment["TIMELET_SCRIPT"] {
+            didRun = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                for step in script.split(separator: ";").map(String.init) {
+                    let parts = step.split(separator: ":", maxSplits: 1).map(String.init)
+                    let arg = parts.count > 1 ? parts[1] : ""
+                    switch parts[0] {
+                    case "show":
+                        switch arg {
+                        case "checkin": app.checkIn.present()
+                        case "nudge": app.checkIn.ask()
+                        case "away": app.checkIn.presentAway(seconds: 27 * 60)
+                        case "settings": NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                        case "week": app.ui.show(.week)
+                        case "stats": app.ui.show(.statistics)
+                        case "today": app.ui.show(.today)
+                        default: break
+                        }
+                    case "size":
+                        let wh = arg.split(separator: "x").compactMap { Double($0) }
+                        if wh.count == 2, let w = NSApp.windows.first(where: { $0.title != "" && $0.isVisible && !($0 is NSPanel) }) {
+                            w.setFrame(NSRect(x: 200, y: 200, width: wh[0], height: wh[1]), display: true)
+                        }
+                    case "type": for ch in arg { postKey(characters: String(ch), keyCode: 0) }
+                    case "key": postNamedKey(arg)
+                    case "wait": try? await Task.sleep(for: .seconds(Double(arg) ?? 1))
+                    case "track": app.engine.track(arg)
+                    case "log": logState(app, arg)
+                    case "quit": NSApp.terminate(nil)
+                    default: break
+                    }
+                    try? await Task.sleep(for: .milliseconds(350))
+                }
+            }
+            return
+        }
+        // Dev: open one piece of UI at launch to check it on screen
+        // (`TIMELET_SHOW=checkin|nudge|away|add`).
+        if !didRun, let show = ProcessInfo.processInfo.environment["TIMELET_SHOW"] {
+            didRun = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                switch show {
+                case "checkin": app.checkIn.present()
+                case "nudge": app.checkIn.ask()
+                case "away": app.checkIn.presentAway(seconds: 27 * 60)
+                case "add": app.ui.requestAddEntry()
+                default: break
+                }
+            }
+            return
+        }
         guard !didRun,
               ProcessInfo.processInfo.environment["TIMELET_SNAPSHOT"] == "1" else { return }
         didRun = true
@@ -108,6 +162,43 @@ enum SnapshotRunner {
             try? await Task.sleep(nanoseconds: 200_000_000)
             NSApp.terminate(nil)
         }
+    }
+
+    @MainActor
+    private static func postKey(characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags = []) {
+        guard let window = NSApp.keyWindow else { print("SCRIPT: no key window"); return }
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
+                                        windowNumber: window.windowNumber, context: nil, characters: characters,
+                                        charactersIgnoringModifiers: characters, isARepeat: false, keyCode: keyCode) {
+                NSApp.postEvent(e, atStart: false)
+            }
+        }
+    }
+
+    @MainActor
+    private static func postNamedKey(_ name: String) {
+        let cmd = name.hasPrefix("cmd")
+        let key = cmd ? String(name.dropFirst(3)) : name
+        let map: [String: (String, UInt16)] = [
+            "return": ("\r", 36), "tab": ("\t", 48), "esc": ("\u{1b}", 53),
+            "down": (String(UnicodeScalar(NSDownArrowFunctionKey)!), 125), "up": (String(UnicodeScalar(NSUpArrowFunctionKey)!), 126),
+            "1": ("1", 18), "2": ("2", 19), "3": ("3", 20), "n": ("n", 45), "k": ("k", 40),
+        ]
+        guard let (chars, code) = map[key] else { return }
+        var flags: NSEvent.ModifierFlags = cmd ? [.command] : []
+        if key == "down" || key == "up" { flags.insert([.numericPad, .function]) }
+        postKey(characters: chars, keyCode: code, modifiers: flags)
+    }
+
+    @MainActor
+    private static func logState(_ app: AppModel, _ tag: String) {
+        let e = app.engine
+        let entries = (try? app.container.mainContext.fetch(FetchDescriptor<Entry>(sortBy: [SortDescriptor(\.start)]))) ?? []
+        let today = entries.filter { Calendar.current.isDateInToday($0.start) }
+        let blocks = today.suffix(4).map { "\($0.activity?.label ?? "?") \(Format.clock($0.start))-\($0.end.map(Format.clock) ?? "…")\($0.note.map { " [\($0)]" } ?? "")" }
+        print("STATE[\(tag)] running=\(e.currentActivity?.label ?? "-") paused=\(e.isPaused) panel=\(app.checkIn.isPresented) nudge=\(app.checkIn.isNudging) away=\(e.pendingAway != nil) last4=\(blocks)")
+        fflush(stdout)
     }
 
     @MainActor
