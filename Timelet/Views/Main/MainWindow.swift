@@ -4,16 +4,14 @@ import SwiftUI
 struct MainWindow: View {
     @Environment(TrackingEngine.self) private var engine
     @Environment(UICoordinator.self) private var ui
+    @Environment(CheckInController.self) private var checkIn
     @Environment(\.openWindow) private var openWindow
-    @State private var selection: SidebarItem = .today
-    @State private var selectedDate: Date = .now
-    @State private var selectedWeek: Date = .now
-    @State private var showingAdd = false
 
     var body: some View {
+        @Bindable var ui = ui
         NavigationSplitView {
-            Sidebar(selection: $selection)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 214, max: 260)
+            Sidebar(selection: $ui.selection)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
             detail
                 .navigationTitle(navTitle)
@@ -21,20 +19,16 @@ struct MainWindow: View {
                 .toolbar { toolbar }
         }
         .navigationSplitViewStyle(.balanced)
-        .sheet(isPresented: $showingAdd) { AddEntryView() }
-        .onChange(of: ui.addEntryTick) { showingAdd = true }
+        .sheet(item: $ui.addEntry) { AddEntryView(request: $0) }
         .onAppear { ui.openMainWindow = { openWindow(id: "main") } }
     }
 
     @ViewBuilder
     private var detail: some View {
-        switch selection {
-        case .today:
-            DayView(date: selectedDate)
-        case .week:
-            WeekView(weekDate: selectedWeek)
-        case .statistics:
-            StatisticsView()
+        switch ui.selection {
+        case .today: DayView(date: ui.selectedDate)
+        case .week: WeekView(weekDate: ui.selectedDate)
+        case .statistics: StatisticsView()
         }
     }
 
@@ -42,71 +36,51 @@ struct MainWindow: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if selection == .today || selection == .week {
+        if ui.selection != .statistics {
             ToolbarItemGroup(placement: .navigation) {
-                Button { shift(-1) } label: { Image(systemName: "chevron.backward") }
-                    .help(selection == .week ? "Previous week" : "Previous day")
-                Button(jumpLabel) { resetPeriod() }
+                Button { ui.shiftDay(-1) } label: { Image(systemName: "chevron.backward") }
+                    .help(ui.selection == .week ? "Previous week (⌘[)" : "Previous day (⌘[)")
+                Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
+                    .help(ui.selection == .week ? "Next week (⌘])" : "Next day (⌘])")
                     .disabled(isCurrentPeriod)
-                    .padding(.horizontal, 8)
-                Button { shift(1) } label: { Image(systemName: "chevron.forward") }
-                    .help(selection == .week ? "Next week" : "Next day")
+                if !isCurrentPeriod {
+                    Button(ui.selection == .week ? "This Week" : "Today") { ui.selectedDate = .now }
+                        .help("⌘T")
+                }
             }
         }
         ToolbarItemGroup(placement: .primaryAction) {
             TrackingPill()
-            Button { showingAdd = true } label: { Image(systemName: "plus") }
-                .help("Add entry manually")
+            Button { checkIn.present() } label: { Label("Check in", systemImage: "text.cursor") }
+                .help("Check in — switch or start a task (⌘K)")
+            Button { ui.requestAddEntry() } label: { Label("Add time", systemImage: "plus") }
+                .help("Add time manually (⌘N)")
         }
     }
-
-    private var jumpLabel: String { selection == .week ? "This Week" : "Today" }
 
     // MARK: Titles
 
     private var navTitle: String {
-        switch selection {
-        case .today: Format.dayTitle(selectedDate, now: engine.now)
-        case .week: Format.weekTitle(selectedWeek, now: engine.now)
+        switch ui.selection {
+        case .today: Format.dayTitle(ui.selectedDate, now: engine.now)
+        case .week: Format.weekTitle(ui.selectedDate, now: engine.now)
         case .statistics: "Statistics"
         }
     }
 
     private var navSubtitle: String {
-        switch selection {
-        case .today: Format.longDate(selectedDate)
-        case .week: Format.weekSubtitle(selectedWeek)
+        switch ui.selection {
+        case .today: Format.longDate(ui.selectedDate)
+        case .week: Format.weekSubtitle(ui.selectedDate)
         case .statistics: ""
-        }
-    }
-
-    // MARK: Navigation
-
-    private func shift(_ direction: Int) {
-        let cal = Calendar.current
-        switch selection {
-        case .today:
-            selectedDate = cal.date(byAdding: .day, value: direction, to: selectedDate) ?? selectedDate
-        case .week:
-            selectedWeek = cal.date(byAdding: .weekOfYear, value: direction, to: selectedWeek) ?? selectedWeek
-        case .statistics:
-            break
-        }
-    }
-
-    private func resetPeriod() {
-        switch selection {
-        case .today: selectedDate = .now
-        case .week: selectedWeek = .now
-        case .statistics: break
         }
     }
 
     private var isCurrentPeriod: Bool {
         let cal = Calendar.current
-        switch selection {
-        case .today: return cal.isDateInToday(selectedDate)
-        case .week: return cal.dateInterval(of: .weekOfYear, for: .now)?.contains(selectedWeek) ?? false
+        switch ui.selection {
+        case .today: return cal.isDate(ui.selectedDate, inSameDayAs: engine.now)
+        case .week: return cal.dateInterval(of: .weekOfYear, for: engine.now)?.contains(ui.selectedDate) ?? false
         case .statistics: return true
         }
     }

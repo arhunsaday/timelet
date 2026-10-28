@@ -1,11 +1,15 @@
 import AppKit
 
-/// A borderless, non-activating floating panel used for the check-in popup (screen 2b).
-/// It can become key (so the text field accepts input) but never becomes the main window.
+/// A borderless, non-activating floating panel. The check-in (2b) can become key so its field
+/// accepts typing; the gentle reminder card cannot, so it never takes the keyboard from the
+/// app you are using.
 final class FloatingPanel: NSPanel {
-    init() {
+    private let acceptsKey: Bool
+
+    init(acceptsKey: Bool = true) {
+        self.acceptsKey = acceptsKey
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 340, height: 220),
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 300),
             styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -17,10 +21,10 @@ final class FloatingPanel: NSPanel {
         isOpaque = false
         hasShadow = true
         hidesOnDeactivate = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         animationBehavior = .utilityWindow
     }
 
-    override var canBecomeKey: Bool { true }
+    override var canBecomeKey: Bool { acceptsKey }
     override var canBecomeMain: Bool { false }
 }

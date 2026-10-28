@@ -38,11 +38,21 @@ struct EmptyStateView: View {
         + Text(" form.").foregroundColor(Theme.textSecondary)
     }
 
-    private var helper: some View {
+    @ViewBuilder private var helper: some View {
+        if let combo = settings.checkInHotkey {
+            hotkeyHint(combo.display)
+        } else {
+            Text("Set a global shortcut in Settings › Shortcuts")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textQuaternary)
+        }
+    }
+
+    private func hotkeyHint(_ keys: String) -> some View {
         HStack(spacing: 6) {
             Text("or press")
                 .foregroundStyle(Theme.textQuaternary)
-            Text("⌘⇧T")
+            Text(keys)
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, 6)
