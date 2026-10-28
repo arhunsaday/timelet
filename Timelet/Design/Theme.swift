@@ -59,9 +59,9 @@ enum Theme {
         "FF2D55", // pink
     ]
 
-    /// App-icon gradient (#FFB43A → #FF9500, 160°).
+    /// App-icon gradient (#FFB43A → #FF6A1F), matching scripts/brand.swift.
     static let iconGradient = LinearGradient(
-        colors: [Color(hex: "FFB43A"), Color(hex: "FF9500")],
+        colors: [Color(hex: "FFB43A"), Color(hex: "FF6A1F")],
         startPoint: .top,
         endPoint: .bottom
     )

@@ -34,8 +34,9 @@ enum SnapshotRunner {
                         }
                     case "size":
                         let wh = arg.split(separator: "x").compactMap { Double($0) }
-                        if wh.count == 2, let w = NSApp.windows.first(where: { $0.title != "" && $0.isVisible && !($0 is NSPanel) }) {
-                            w.setFrame(NSRect(x: 200, y: 200, width: wh[0], height: wh[1]), display: true)
+                        let main = NSApp.windows.filter { $0.isVisible && !($0 is NSPanel) }.max { $0.frame.width < $1.frame.width }
+                        if wh.count == 2, let w = main {
+                            w.setFrame(NSRect(x: 200, y: 200, width: wh[0], height: wh[1]), display: true, animate: false)
                         }
                     case "type": for ch in arg { postKey(characters: String(ch), keyCode: 0) }
                     case "key": postNamedKey(arg)

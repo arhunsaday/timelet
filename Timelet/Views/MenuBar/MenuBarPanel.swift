@@ -58,7 +58,7 @@ struct MenuBarPanel: View {
             }
 
             VStack(spacing: 1) {
-                MenuActionRow(icon: "text.cursor", title: engine.runningEntry == nil ? "Start a task…" : "Switch task…") {
+                MenuActionRow(icon: "timer", title: engine.runningEntry == nil ? "Start a task…" : "Switch task…") {
                     dismiss()
                     checkIn.present()
                 }

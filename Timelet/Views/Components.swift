@@ -11,7 +11,7 @@ struct ColorSwatch: View {
     }
 }
 
-/// Orange-gradient app-icon badge with a white `timer` glyph (screens 2b / 2e).
+/// Orange-gradient app-icon badge with a white stopwatch, echoing the app icon (screens 2b / 2e).
 struct AppIconBadge: View {
     var size: CGFloat
     var body: some View {
@@ -19,11 +19,11 @@ struct AppIconBadge: View {
             .fill(Theme.iconGradient)
             .frame(width: size, height: size)
             .overlay(
-                Image(systemName: "timer")
-                    .font(.system(size: size * 0.55, weight: .medium))
+                Image(systemName: "stopwatch")
+                    .font(.system(size: size * 0.56, weight: .semibold))
                     .foregroundStyle(.white)
             )
-            .shadow(color: Color(hex: "FF9500").opacity(0.35), radius: size * 0.18, y: size * 0.12)
+            .shadow(color: Color(hex: "FF6A1F").opacity(0.35), radius: size * 0.18, y: size * 0.12)
     }
 }
 

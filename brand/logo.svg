@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Timelet">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB43A"/><stop offset="1" stop-color="#FF6A1F"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <g fill="#fff">
+    <rect x="466.0" y="190.0" width="92.0" height="62.0" rx="18"/>
+    <rect x="492.0" y="242.0" width="40.0" height="40.0"/>
+    <rect x="-22" y="-328.0" width="44" height="54" rx="12" transform="translate(512.0 548.0) rotate(45)"/>
+    <path d="M512.0 548.0 L512.0 352.0 A196.0 196.0 0 0 1 677.5 653.0 Z"/>
+  </g>
+  <circle cx="512.0" cy="548.0" r="262.0" fill="none" stroke="#fff" stroke-width="58.0"/>
+  <circle cx="512.0" cy="548.0" r="26" fill="#FF6A1F"/>
+  <circle cx="512.0" cy="548.0" r="12" fill="#fff"/>
+</svg>
