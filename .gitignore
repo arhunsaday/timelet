@@ -12,3 +12,6 @@ xcuserdata/
 
 # SwiftPM
 Package.resolved
+
+# Coverage output from test runs
+*.profraw
