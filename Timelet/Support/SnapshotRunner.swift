@@ -23,14 +23,9 @@ enum SnapshotRunner {
 
             // 2a — Today content (headline + cards), built from the real store.
             let entries = (try? app.container.mainContext.fetch(FetchDescriptor<Entry>())) ?? []
-            let runningElapsed: TimeInterval = {
-                if let r = app.engine.runningEntry,
-                   Calendar.current.isDate(r.start, inSameDayAs: app.engine.now) { return app.engine.elapsed }
-                return 0
-            }()
-            let summary = DaySummary.build(entries: entries, day: app.engine.now, runningElapsed: runningElapsed, now: app.engine.now)
+            let summary = DaySummary.build(entries: entries, day: app.engine.now, now: app.engine.now)
             renderApp(
-                DayContent(summary: summary)
+                DayContent(summary: summary, date: app.engine.now)
                     .padding(.horizontal, 20).padding(.vertical, 18)
                     .frame(width: 672, alignment: .top)
                     .background(Theme.contentBackground),
@@ -47,8 +42,7 @@ enum SnapshotRunner {
 
             // 2b — check-in panel.
             renderApp(
-                CheckInPanel(engine: app.engine, mode: .regular(intervalMinutes: app.settings.askIntervalMinutes),
-                             onPrimary: { _, _ in }, onSecondary: {}),
+                CheckInPanel(engine: app.engine, mode: .regular, onDone: {}),
                 app: app, to: dir.appendingPathComponent("2b_checkin.png"))
 
             // 2c — menu-bar popover.
@@ -85,11 +79,10 @@ enum SnapshotRunner {
             renderApp(StatisticsContent()
                         .frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3d_stats.png"))
-            renderApp(CheckInPanel(engine: app.engine, mode: .idle(awaySeconds: 12 * 60),
-                                   onPrimary: { _, _ in }, onSecondary: {}),
+            renderApp(CheckInPanel(engine: app.engine, mode: .away(seconds: 12 * 60), onDone: {}),
                       app: app, to: dir.appendingPathComponent("3e_idle.png"))
 
-            renderApp(AddEntryView(), app: app, to: dir.appendingPathComponent("3g_add.png"))
+            renderApp(AddEntryView(request: AddEntryRequest(day: app.engine.now)), app: app, to: dir.appendingPathComponent("3g_add.png"))
 
             // Note display demo (an expanded row) — the live store may have no notes yet.
             renderApp(
@@ -120,6 +113,7 @@ enum SnapshotRunner {
     @MainActor
     private static func renderApp(_ view: some View, app: AppModel, to url: URL) {
         let wrapped = view
+            .environment(app)
             .environment(app.engine)
             .environment(app.settings)
             .environment(app.checkIn)

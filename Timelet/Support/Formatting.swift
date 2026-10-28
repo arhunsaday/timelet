@@ -27,16 +27,30 @@ enum Format {
 
     // MARK: Running timers
 
-    /// `mm:ss` with zero-padded minutes (toolbar pill, menu-bar row): `04:12`, `72:15`.
+    /// `mm:ss` under an hour, `h:mm:ss` after (toolbar pill, menu-bar row): `04:12`, `1:12:15`.
     static func stopwatch(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds))
+        if total >= 3600 { return String(format: "%d:%02d:%02d", total / 3600, total % 3600 / 60, total % 60) }
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
-    /// `m:ss` with un-padded minutes (compact menu-bar title): `4:12`.
+    /// `m:ss` under an hour, `h:mm` after (menu-bar title, which should not jitter): `4:12`, `1:12`.
     static func stopwatchCompact(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds))
+        if total >= 3600 { return String(format: "%d:%02d", total / 3600, total % 3600 / 60) }
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    /// `just now`, `12m ago`, `3h ago`, `yesterday`, `4d ago`, `Mar 2`.
+    static func relative(_ date: Date, now: Date) -> String {
+        let s = now.timeIntervalSince(date)
+        if s < 60 { return "just now" }
+        if s < 3600 { return "\(Int(s / 60))m ago" }
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) { return "\(Int(s / 3600))h ago" }
+        if let y = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: y) { return "yesterday" }
+        if s < 7 * 86400 { return "\(Int(ceil(s / 86400)))d ago" }
+        return monthDay(date)
     }
 
     // MARK: Time of day

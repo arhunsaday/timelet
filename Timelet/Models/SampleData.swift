@@ -2,14 +2,11 @@ import Foundation
 import SwiftData
 
 enum SampleData {
-    /// Seed the handoff's verbatim sample data (screen 2a), dated to today, plus a
-    /// currently-running "Electron refactor" segment started 4:12 ago (matches the pill).
+    /// A believable week for demos and screenshots (`TIMELET_SAMPLE=1`): today matches the
+    /// design handoff's screen 2a, earlier days vary, and a task is running.
     @MainActor
-    static func seed(into context: ModelContext) {
+    static func seed(into context: ModelContext, now: Date = .now) {
         let cal = Calendar.current
-        func today(_ h: Int, _ m: Int) -> Date {
-            cal.date(bySettingHour: h, minute: m, second: 0, of: .now) ?? .now
-        }
 
         let timelet = Project(name: "Timelet", colorHex: Theme.palette[0], order: 0)
         let clientX = Project(name: "Client-X", colorHex: Theme.palette[1], order: 1)
@@ -17,29 +14,52 @@ enum SampleData {
         let admin = Project(name: "Admin", colorHex: Theme.palette[3], order: 3)
         [timelet, clientX, learning, admin].forEach(context.insert)
 
+        var activities: [String: Activity] = [:]
         func activity(_ name: String, _ project: Project) -> Activity {
+            if let a = activities[name] { return a }
             let a = Activity(name: name, project: project)
             context.insert(a)
+            activities[name] = a
             return a
         }
-        let electron = activity("Electron refactor", timelet)
-        let mockups = activity("Design mockups", timelet)
-        let authBug = activity("Auth token bugfix", clientX)
-        let rust = activity("Rust ownership", learning)
-        let standup = activity("Standup", admin)
 
-        func entry(_ a: Activity, _ start: Date, _ end: Date) {
-            context.insert(Entry(start: start, end: end, activity: a))
+        func day(_ offset: Int, _ blocks: [(Int, Int, Int, Int, String, Project, String?)]) {
+            guard let date = cal.date(byAdding: .day, value: -offset, to: now) else { return }
+            for (h1, m1, h2, m2, name, project, note) in blocks {
+                guard let s = cal.date(bySettingHour: h1, minute: m1, second: 0, of: date),
+                      let e = cal.date(bySettingHour: h2, minute: m2, second: 0, of: date), e <= now else { continue }
+                context.insert(Entry(start: s, end: e, activity: activity(name, project), note: note))
+            }
         }
-        entry(electron, today(13, 30), today(15, 40)) // 2h 10m
-        entry(mockups, today(9, 15), today(11, 0))    // 1h 45m
-        entry(authBug, today(11, 20), today(12, 50))  // 1h 30m
-        entry(rust, today(15, 45), today(16, 25))     // 40m
-        entry(standup, today(9, 0), today(9, 25))      // 25m
 
-        // Currently running segment.
-        context.insert(Entry(start: .now.addingTimeInterval(-252), end: nil, activity: electron))
+        day(0, [
+            (9, 0, 9, 25, "Standup", admin, nil),
+            (9, 25, 11, 0, "Design mockups", timelet, "Check-in panel, gentle reminder card, menu bar."),
+            (11, 20, 12, 50, "Auth token bugfix", clientX, "Refresh token expired early on Safari. Fixed the clock skew."),
+            (13, 30, 15, 40, "Electron refactor", timelet, nil),
+            (15, 45, 16, 25, "Rust ownership", learning, nil),
+        ])
+        day(1, [
+            (9, 0, 9, 20, "Standup", admin, nil), (9, 20, 12, 10, "Electron refactor", timelet, nil),
+            (13, 0, 15, 30, "API pagination", clientX, nil), (15, 30, 17, 15, "Code review", clientX, nil),
+        ])
+        day(2, [
+            (9, 0, 9, 15, "Standup", admin, nil), (9, 15, 11, 45, "Design mockups", timelet, nil),
+            (12, 30, 14, 0, "Rust ownership", learning, nil), (14, 0, 17, 40, "Auth token bugfix", clientX, nil),
+        ])
+        day(3, [
+            (9, 30, 12, 0, "Electron refactor", timelet, nil), (13, 0, 14, 30, "Invoices", admin, nil),
+            (14, 30, 16, 50, "API pagination", clientX, nil),
+        ])
+        day(4, [
+            (9, 0, 9, 20, "Standup", admin, nil), (9, 20, 12, 30, "Release 1.2", timelet, nil),
+            (13, 30, 15, 0, "Code review", clientX, nil),
+        ])
 
+        // A task in progress, started a few minutes ago.
+        if let last = cal.date(bySettingHour: 16, minute: 25, second: 0, of: now), last < now {
+            context.insert(Entry(start: max(last, now.addingTimeInterval(-252)), end: nil, activity: activity("Electron refactor", timelet)))
+        }
         try? context.save()
     }
 }

@@ -59,9 +59,17 @@ final class Entry {
 
     var isRunning: Bool { end == nil }
 
-    /// Elapsed time; for a running entry this grows relative to `now`.
+    /// Rounding step for reported durations (Settings › Round durations), in seconds; 0 = exact.
+    /// Applied when reading, never written back, so stored blocks never overlap.
+    nonisolated(unsafe) static var reportingStep: TimeInterval = 0
+
+    /// Elapsed time; for a running entry this grows relative to `now` and is never rounded.
+    /// Completed entries are rounded to the nearest `reportingStep` (at least one step).
     func duration(asOf now: Date = .now) -> TimeInterval {
-        max(0, (end ?? now).timeIntervalSince(start))
+        let exact = max(0, (end ?? now).timeIntervalSince(start))
+        let step = Self.reportingStep
+        guard end != nil, step > 0, exact > 0 else { return exact }
+        return max(step, (exact / step).rounded() * step)
     }
 
     /// The note if it has non-whitespace content, else `nil`.
