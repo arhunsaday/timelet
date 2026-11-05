@@ -50,6 +50,7 @@ enum SnapshotRunner {
                     case "quit": NSApp.terminate(nil)
                     case "find": app.ui.searchRequest += 1
                     case "search": app.ui.searchText = arg
+                    case "period": app.ui.statsPeriod = arg == "month" ? .month : .week
                     default: break
                     }
                     try? await Task.sleep(for: .milliseconds(350))

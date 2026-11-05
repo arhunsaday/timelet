@@ -44,10 +44,14 @@ Suggestions are ranked: whole-label prefix, then activity prefix, then word pref
 
 | | |
 | --- | --- |
-| **Today** | Total, the day as a timeline (click a dashed gap to fill it), and one card per project. The running task is shown live |
-| **Week / Statistics** | Day-by-day list for any week, and charts by day and by project |
+| **Today** | Total, the day as a timeline (click a dashed gap to fill it, right-click to stretch the block before or after over it), and one card per project. The running task is shown live |
+| **Week** | Day-by-day list for any week with per-project totals; click a day's header to open it |
+| **Statistics** | Charts by day and by project for any week or month |
+| **Projects** | Click a project in the sidebar: this week, this month, all time, its tasks ranked by time, and its latest blocks |
+| **Search** | **⌘F** finds any task, project or note across everything tracked |
+| **Focus sessions** | Pomodoro on the running task (**⌥⌘F**): focus, then a break that pauses tracking and resumes the task when it ends. Check-ins wait while you focus. Lengths in Settings |
 | **Add time** | **⌘N**. One field understands `45m`, `1h30`, `9-10:30`, `2pm to 3:15pm`; it shows the exact interval, and warns about overlaps or future times |
-| **Edit** | Click any block. Autocomplete for the task, ±5/15 min nudges, *Track again*, delete (with **Undo**) |
+| **Edit** | Click any block. Autocomplete for the task, ±5/15 min nudges for start and end, *Track again*, delete (with **Undo**) |
 | **Menu bar** | Timer, task and timer, today's total, or icon only. The popover shows today's total, the next check-in, and switches to a recent task in one click |
 | **Work hours** | Days and hours when check-ins happen. **Done for today** stops and stays quiet until the next working day |
 | **Rounding** | Round reported durations to 1–30 minutes. Recorded times are never changed, so switching it off is lossless |
@@ -64,8 +68,10 @@ Suggestions are ranked: whole-label prefix, then activity prefix, then word pref
 | In Timelet | |
 | --- | --- |
 | Check in · Add time · Pause/resume · Stop | ⌘K · ⌘N · ⇧⌘P · ⌘. |
+| Start / stop a focus session | ⌥⌘F |
 | Today · Week · Statistics | ⌘1 · ⌘2 · ⌘3 |
-| Previous / next day · Go to today | ⌘[ · ⌘] · ⌘T |
+| Previous / next day, week or month · Go to today · Go to date | ⌘[ · ⌘] · ⌘T · ⇧⌘T |
+| Search | ⌘F |
 | Export CSV | ⇧⌘E |
 
 The previous default, ⌘⇧T, took over "reopen closed tab" in every browser; the recorder warns about combos like that.
@@ -153,16 +159,17 @@ replace the local `TrackingEngine` later without touching views.
 Timelet/
 ├── TimeletApp.swift          # @main: scenes (window · menu bar · settings), commands, store location, global shortcuts
 ├── Models/                   # SwiftData @Model: Project · Activity · Entry  (+ SampleData)
-├── Store/TrackingStore.swift # TrackingStore + TrackingEngine: tracking, check-in schedule, away time, launch recovery
+├── Store/TrackingStore.swift # TrackingStore + TrackingEngine: tracking, check-in schedule, away time, launch recovery, search
+├── Store/Pomodoro.swift      # focus/break cycle on top of the engine
 ├── Settings/                 # AppSettings (UserDefaults-backed @Observable) · LoginItem (SMAppService)
 ├── Design/Theme.swift        # color / radius tokens from the handoff (light + tuned dark)
 ├── Support/                  # parsers (entries, durations, ranges) · Ranking · GlobalHotkey (Carbon) · IdleMonitor · Exporter
 └── Views/
-    ├── Main/                 # NavigationSplitView: Sidebar · DayView (timeline) · WeekView · StatisticsView · Add/Edit sheets
-    ├── CheckIn/              # FloatingPanel · CheckInController · CheckInPanel · NudgeView (gentle reminder)
+    ├── Main/                 # NavigationSplitView: Sidebar · DayView (timeline) · WeekView · StatisticsView · ProjectDetailView · SearchResultsView · Add/Edit sheets
+    ├── CheckIn/              # FloatingPanel · CheckInController · CheckInPanel · NudgeView (gentle reminder) · PomodoroCard
     ├── MenuBar/              # MenuBarExtra label + popover
     └── Settings/             # General · Shortcuts (recorder) · Projects
-TimeletTests/                 # parsing, ranking, and TrackingEngine with an in-memory store and a fake clock
+TimeletTests/                 # parsing, ranking, TrackingEngine and Pomodoro with an in-memory store and a fake clock
 scripts/brand.swift           # draws the app icon at every size + brand/logo.svg
 ```
 
@@ -178,6 +185,6 @@ All dev-only, all driven by environment variables:
 | `TIMELET_IN_MEMORY=1` | Don't persist anything |
 | `TIMELET_SAMPLE=1` | Seed demo data into an empty store |
 | `TIMELET_SHOW=checkin\|nudge\|away\|add` | Open that UI at launch |
-| `TIMELET_SCRIPT="show:checkin;type:elec;key:down;key:return;log:a"` | Drive the real UI with key events posted to Timelet's own windows (no Accessibility permission needed) and print the engine state after `log` steps |
+| `TIMELET_SCRIPT="show:checkin;type:elec;key:down;key:return;log:a"` | Drive the real UI with key events posted to Timelet's own windows (no Accessibility permission needed) and print the engine state after `log` steps. Also `track:Project: task`, `focus`, `project:Name`, `search:text`, `period:month`, `find`. Posted ⌘-shortcuts only reach the menus when Timelet is the active app |
 | `TIMELET_SNAPSHOT=1 TIMELET_SNAPSHOT_DIR=/tmp/shots` | Render every screen to PNG with `ImageRenderer`, then quit |
 
