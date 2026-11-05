@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Edit a project's name + color (#7). Reached by clicking a project in the sidebar or the
-/// Projects settings tab. Delete lives here too; archive is on the context menu.
+/// Edit a project's name + color (#7). Reached from the project view, the sidebar's context menu
+/// or the Projects settings tab. Delete lives here too; archive is on the context menu.
 struct ProjectEditorView: View {
     let project: Project
     @Environment(TrackingEngine.self) private var engine

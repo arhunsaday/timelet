@@ -3,10 +3,11 @@ import SwiftData
 
 enum SidebarItem: Hashable {
     case today, week, statistics
+    case project(PersistentIdentifier)
 }
 
-/// Vibrancy sidebar (2a): nav rows, a Projects section with per-project day totals + inline
-/// editing (click to edit name/color, right-click to archive/delete), and a Settings row.
+/// Vibrancy sidebar (2a): nav rows, a Projects section with per-project day totals (click to open
+/// the project, right-click to edit/archive/delete), and a Settings row.
 struct Sidebar: View {
     @Binding var selection: SidebarItem
     @Environment(TrackingEngine.self) private var engine
@@ -30,6 +31,7 @@ struct Sidebar: View {
             Section("Projects") {
                 ForEach(projects.filter { !$0.isArchived }) { project in
                     projectRow(project, total: totals[project.persistentModelID] ?? 0)
+                        .tag(SidebarItem.project(project.persistentModelID))
                 }
             }
         }
@@ -43,6 +45,7 @@ struct Sidebar: View {
             presenting: pendingDelete
         ) { project in
             Button("Delete “\(project.name)”", role: .destructive) {
+                if selection == .project(project.persistentModelID) { selection = .today }
                 engine.deleteProject(project)
                 pendingDelete = nil
             }
@@ -60,8 +63,6 @@ struct Sidebar: View {
                 .foregroundStyle(Theme.textQuaternary)
                 .monospacedDigit()
         }
-        .contentShape(Rectangle())
-        .onTapGesture { editingProject = project }
         .projectContextMenu(project, engine: engine,
                             onEdit: { editingProject = project },
                             onDelete: { pendingDelete = project })

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// Main window (2a): NavigationSplitView with the vibrancy sidebar and the selected detail.
 struct MainWindow: View {
@@ -9,6 +10,8 @@ struct MainWindow: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.openWindow) private var openWindow
     @State private var pickingDate = false
+    @State private var editingProject: Project?
+    @Query private var projects: [Project]
 
     var body: some View {
         @Bindable var ui = ui
@@ -23,6 +26,7 @@ struct MainWindow: View {
         }
         .navigationSplitViewStyle(.balanced)
         .sheet(item: $ui.addEntry) { AddEntryView(request: $0) }
+        .sheet(item: $editingProject) { ProjectEditorView(project: $0) }
         .onAppear { ui.openMainWindow = { openWindow(id: "main") } }
         .onChange(of: ui.pickDateRequest) { pickingDate = true }
     }
@@ -33,6 +37,8 @@ struct MainWindow: View {
         case .today: DayView(date: ui.selectedDate)
         case .week: WeekView(weekDate: ui.selectedDate)
         case .statistics: StatisticsView(period: ui.statsPeriod, date: ui.selectedDate)
+        case .project:
+            if let project = selectedProject { ProjectDetailView(project: project) } else { DayView(date: ui.selectedDate) }
         }
     }
 
@@ -41,28 +47,35 @@ struct MainWindow: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         @Bindable var ui = ui
-        ToolbarItemGroup(placement: .navigation) {
-            Button { ui.shiftDay(-1) } label: { Image(systemName: "chevron.backward") }
-                .help("Previous \(ui.pagingName.lowercased()) (⌘[)")
-            Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
-                .help("Next \(ui.pagingName.lowercased()) (⌘])")
-                .disabled(isCurrentPeriod)
-            Button { pickingDate.toggle() } label: { Image(systemName: "calendar") }
-                .help("Go to date… (⇧⌘T)")
-                .popover(isPresented: $pickingDate, arrowEdge: .bottom) { datePicker }
-            if !isCurrentPeriod {
-                Button(currentPeriodTitle) { ui.selectedDate = .now }
-                    .help("⌘T")
-            }
-        }
-        if ui.selection == .statistics {
+        if let project = selectedProject {
             ToolbarItem(placement: .navigation) {
-                Picker("Period", selection: $ui.statsPeriod) {
-                    ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
+                Button { editingProject = project } label: { Label("Edit project", systemImage: "pencil") }
+                    .help("Rename or recolor \(project.name)")
+            }
+        } else {
+            ToolbarItemGroup(placement: .navigation) {
+                Button { ui.shiftDay(-1) } label: { Image(systemName: "chevron.backward") }
+                    .help("Previous \(ui.pagingName.lowercased()) (⌘[)")
+                Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
+                    .help("Next \(ui.pagingName.lowercased()) (⌘])")
+                    .disabled(isCurrentPeriod)
+                Button { pickingDate.toggle() } label: { Image(systemName: "calendar") }
+                    .help("Go to date… (⇧⌘T)")
+                    .popover(isPresented: $pickingDate, arrowEdge: .bottom) { datePicker }
+                if !isCurrentPeriod {
+                    Button(currentPeriodTitle) { ui.selectedDate = .now }
+                        .help("⌘T")
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
+            }
+            if ui.selection == .statistics {
+                ToolbarItem(placement: .navigation) {
+                    Picker("Period", selection: $ui.statsPeriod) {
+                        ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
             }
         }
         ToolbarItemGroup(placement: .primaryAction) {
@@ -99,11 +112,17 @@ struct MainWindow: View {
 
     // MARK: Titles
 
+    private var selectedProject: Project? {
+        guard case .project(let id) = ui.selection else { return nil }
+        return projects.first { $0.persistentModelID == id }
+    }
+
     private var navTitle: String {
         switch ui.selection {
         case .today: Format.dayTitle(ui.selectedDate, now: engine.now)
         case .week: Format.weekTitle(ui.selectedDate, now: engine.now)
         case .statistics: "Statistics"
+        case .project: selectedProject?.name ?? ""
         }
     }
 
@@ -112,6 +131,7 @@ struct MainWindow: View {
         case .today: Format.longDate(ui.selectedDate)
         case .week: Format.weekSubtitle(ui.selectedDate)
         case .statistics: ui.statsPeriod.title(ui.selectedDate, now: engine.now)
+        case .project: "Project"
         }
     }
 

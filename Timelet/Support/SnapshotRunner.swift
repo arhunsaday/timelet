@@ -43,6 +43,9 @@ enum SnapshotRunner {
                     case "wait": try? await Task.sleep(for: .seconds(Double(arg) ?? 1))
                     case "track": app.engine.track(arg)
                     case "focus": app.pomodoro.start()
+                    case "project":
+                        let projects = (try? app.container.mainContext.fetch(FetchDescriptor<Project>())) ?? []
+                        if let p = projects.first(where: { $0.name == arg }) { app.ui.show(.project(p.persistentModelID)) }
                     case "log": logState(app, arg)
                     case "quit": NSApp.terminate(nil)
                     default: break
@@ -127,6 +130,9 @@ enum SnapshotRunner {
             if let project = (try? app.container.mainContext.fetch(FetchDescriptor<Project>()))?.first {
                 renderApp(ProjectEditorView(project: project), app: app,
                           to: dir.appendingPathComponent("3b_project_editor.png"))
+                renderApp(ProjectDetailContent(project: project, now: app.engine.now)
+                            .padding(20).frame(width: 700, alignment: .top).background(Theme.contentBackground),
+                          app: app, to: dir.appendingPathComponent("3j_project.png"))
             }
             let weekModel = WeekModel.build(entries: entries, weekDate: app.engine.now, now: app.engine.now)
             renderApp(WeekContent(model: weekModel, now: app.engine.now)

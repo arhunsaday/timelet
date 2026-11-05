@@ -41,7 +41,7 @@ final class UICoordinator {
     /// The step ⌘[ / ⌘] move by in the current view.
     var pagingUnit: Calendar.Component {
         switch selection {
-        case .today: .day
+        case .today, .project: .day
         case .week: .weekOfYear
         case .statistics: statsPeriod.component
         }
@@ -57,6 +57,7 @@ final class UICoordinator {
     }
 
     func shiftDay(_ steps: Int) {
+        if case .project = selection { selection = .today }
         selectedDate = Calendar.current.date(byAdding: pagingUnit, value: steps, to: selectedDate) ?? selectedDate
     }
 }
@@ -237,6 +238,7 @@ struct TimeletApp: App {
             Button("Next \(app.ui.pagingName)") { app.ui.shiftDay(1) }.keyboardShortcut("]", modifiers: .command)
             Button("Go to Today") { app.ui.selectedDate = .now }.keyboardShortcut("t", modifiers: .command)
             Button("Go to Date…") {
+                if case .project = app.ui.selection { app.ui.selection = .today }
                 app.ui.openDashboard()
                 app.ui.pickDateRequest += 1
             }
