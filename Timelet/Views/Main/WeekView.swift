@@ -57,8 +57,13 @@ struct WeekModel {
 struct WeekView: View {
     let weekDate: Date
     @Environment(TrackingEngine.self) private var engine
-    @Query(sort: \Entry.start, order: .reverse) private var entries: [Entry]
+    @Query private var entries: [Entry]
     @State private var editing: Entry?
+
+    init(weekDate: Date) {
+        self.weekDate = weekDate
+        _entries = Query(filter: Entry.starting(in: Format.weekInterval(weekDate)), sort: \Entry.start)
+    }
 
     var body: some View {
         let model = WeekModel.build(entries: entries, weekDate: weekDate, now: engine.now)

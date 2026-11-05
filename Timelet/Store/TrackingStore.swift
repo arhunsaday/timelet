@@ -379,10 +379,7 @@ final class TrackingEngine: TrackingStore {
 
     /// Tracked time on `day`, including the running block.
     func total(on day: Date) -> TimeInterval {
-        let cal = Calendar.current
-        let start = cal.startOfDay(for: day)
-        let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.start >= start && $0.start < end })
+        let descriptor = FetchDescriptor<Entry>(predicate: Entry.starting(in: Format.dayInterval(day)))
         return ((try? context.fetch(descriptor)) ?? [])
             .filter { !($0.activity?.project?.isArchived ?? false) }
             .reduce(0) { $0 + $1.duration(asOf: now) }
@@ -397,9 +394,7 @@ final class TrackingEngine: TrackingStore {
     }
 
     func entries(in interval: DateInterval) -> [Entry] {
-        let s = interval.start, e = interval.end
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.start >= s && $0.start < e },
-                                                sortBy: [SortDescriptor(\.start)])
+        let descriptor = FetchDescriptor<Entry>(predicate: Entry.starting(in: interval), sortBy: [SortDescriptor(\.start)])
         return (try? context.fetch(descriptor)) ?? []
     }
 

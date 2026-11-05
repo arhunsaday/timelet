@@ -17,6 +17,7 @@ struct AddEntryRequest: Identifiable, Equatable {
 final class UICoordinator {
     var selection: SidebarItem = .today
     var selectedDate: Date = .now
+    var statsPeriod: StatsPeriod = .week
     var addEntry: AddEntryRequest?
     @ObservationIgnored var openMainWindow: (() -> Void)?
 
@@ -35,8 +36,26 @@ final class UICoordinator {
         openDashboard()
     }
 
-    func shiftDay(_ days: Int) {
-        selectedDate = Calendar.current.date(byAdding: selection == .week ? .weekOfYear : .day, value: days, to: selectedDate) ?? selectedDate
+    /// The step ⌘[ / ⌘] move by in the current view.
+    var pagingUnit: Calendar.Component {
+        switch selection {
+        case .today: .day
+        case .week: .weekOfYear
+        case .statistics: statsPeriod.component
+        }
+    }
+
+    /// `Day`, `Week` or `Month`, for menu titles and tooltips.
+    var pagingName: String {
+        switch pagingUnit {
+        case .weekOfYear: "Week"
+        case .month: "Month"
+        default: "Day"
+        }
+    }
+
+    func shiftDay(_ steps: Int) {
+        selectedDate = Calendar.current.date(byAdding: pagingUnit, value: steps, to: selectedDate) ?? selectedDate
     }
 }
 
@@ -205,8 +224,8 @@ struct TimeletApp: App {
             Button("Week") { app.ui.show(.week) }.keyboardShortcut("2", modifiers: .command)
             Button("Statistics") { app.ui.show(.statistics) }.keyboardShortcut("3", modifiers: .command)
             Divider()
-            Button("Previous Day") { app.ui.shiftDay(-1) }.keyboardShortcut("[", modifiers: .command)
-            Button("Next Day") { app.ui.shiftDay(1) }.keyboardShortcut("]", modifiers: .command)
+            Button("Previous \(app.ui.pagingName)") { app.ui.shiftDay(-1) }.keyboardShortcut("[", modifiers: .command)
+            Button("Next \(app.ui.pagingName)") { app.ui.shiftDay(1) }.keyboardShortcut("]", modifiers: .command)
             Button("Go to Today") { app.ui.selectedDate = .now }.keyboardShortcut("t", modifiers: .command)
             Divider()
         }

@@ -66,6 +66,7 @@ enum Format {
     private static let weekdayFormatter = formatter("EEEE")
     private static let weekdayShortFormatter = formatter("EEE")
     private static let monthDayFormatter = formatter("MMM d")
+    private static let monthYearFormatter = formatter("MMMM yyyy")
 
     private static func formatter(_ format: String) -> DateFormatter {
         let f = DateFormatter()
@@ -90,6 +91,9 @@ enum Format {
     /// `Jul 21`
     static func monthDay(_ date: Date) -> String { monthDayFormatter.string(from: date) }
 
+    /// `March 2026`
+    static func monthYear(_ date: Date) -> String { monthYearFormatter.string(from: date) }
+
     // MARK: Relative day / week titles
 
     /// `Today` / `Yesterday` / `Tomorrow` / weekday name.
@@ -99,6 +103,11 @@ enum Format {
         if let y = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: y) { return "Yesterday" }
         if let t = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(date, inSameDayAs: t) { return "Tomorrow" }
         return weekdayFormatter.string(from: date)
+    }
+
+    /// The [start, end) interval of the day containing `date`.
+    static func dayInterval(_ date: Date) -> DateInterval {
+        Calendar.current.dateInterval(of: .day, for: date) ?? DateInterval(start: date, duration: 86_400)
     }
 
     /// The [start, end) interval of the week containing `date`.

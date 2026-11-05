@@ -131,7 +131,7 @@ enum SnapshotRunner {
             renderApp(WeekContent(model: weekModel, now: app.engine.now)
                         .padding(20).frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3c_week.png"))
-            renderApp(StatisticsContent()
+            renderApp(StatisticsContent(period: .week, date: app.engine.now)
                         .frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3d_stats.png"))
             renderApp(CheckInPanel(engine: app.engine, mode: .away(seconds: 12 * 60), onDone: {}),

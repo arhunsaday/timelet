@@ -5,12 +5,23 @@ import Charts
 enum StatsPeriod: String, CaseIterable, Identifiable {
     case week, month
     var id: String { rawValue }
-    var label: String { self == .week ? "This Week" : "This Month" }
+    var label: String { self == .week ? "Week" : "Month" }
+    var component: Calendar.Component { self == .week ? .weekOfYear : .month }
 
-    func interval(now: Date) -> DateInterval {
+    /// The week or month containing `date`.
+    func interval(containing date: Date) -> DateInterval {
+        Calendar.current.dateInterval(of: component, for: date) ?? DateInterval(start: date, duration: 604_800)
+    }
+
+    /// `This Week` / `Last Week` / `Week of Jul 14`, or `This Month` / `Last Month` / `March 2026`.
+    func title(_ date: Date, now: Date) -> String {
+        if self == .week { return Format.weekTitle(date, now: now) }
         let cal = Calendar.current
-        let component: Calendar.Component = self == .week ? .weekOfYear : .month
-        return cal.dateInterval(of: component, for: now) ?? DateInterval(start: now, duration: 604_800)
+        if cal.isDate(date, equalTo: now, toGranularity: .month) { return "This Month" }
+        if let last = cal.date(byAdding: .month, value: -1, to: now), cal.isDate(date, equalTo: last, toGranularity: .month) {
+            return "Last Month"
+        }
+        return Format.monthYear(date)
     }
 }
 
@@ -94,23 +105,33 @@ struct StatsModel {
     }
 }
 
-/// Statistics (2a detail): a stacked-by-project weekly bar chart with total + average.
+/// Statistics (2a detail): a stacked-by-project bar chart for the selected week or month, with
+/// total + average. The period and paging live in the toolbar.
 struct StatisticsView: View {
+    let period: StatsPeriod
+    let date: Date
+
     var body: some View {
-        ScrollView { StatisticsContent() }
+        ScrollView { StatisticsContent(period: period, date: date) }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.contentBackground)
     }
 }
 
 struct StatisticsContent: View {
+    let period: StatsPeriod
+    let interval: DateInterval
     @Environment(TrackingEngine.self) private var engine
-    @Query(sort: \Entry.start) private var entries: [Entry]
-    @State private var period: StatsPeriod = .week
+    @Query private var entries: [Entry]
+
+    init(period: StatsPeriod, date: Date) {
+        self.period = period
+        interval = period.interval(containing: date)
+        _entries = Query(filter: Entry.starting(in: interval), sort: \Entry.start)
+    }
 
     var body: some View {
-        let now = engine.now
-        let model = StatsModel.build(entries: entries, interval: period.interval(now: now), now: now)
+        let model = StatsModel.build(entries: entries, interval: interval, now: engine.now)
 
         VStack(alignment: .leading, spacing: 18) {
             header(model)
@@ -128,7 +149,7 @@ struct StatisticsContent: View {
     private func header(_ model: StatsModel) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(Format.periodRange(period.interval(now: engine.now)))
+                Text(Format.periodRange(interval))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
                     .tracking(0.5)
@@ -166,6 +187,14 @@ struct StatisticsContent: View {
                         BarMark(x: .value("Day", day.date, unit: .day), y: .value("Hours", segment.hours))
                             .foregroundStyle(Color(hex: segment.colorHex))
                             .cornerRadius(5)
+                            .annotation(position: .top, spacing: 4) {
+                                if period == .week, segment.id == day.segments.last?.id {
+                                    Text(Format.duration(day.total))
+                                        .font(.system(size: 10.5, weight: .medium))
+                                        .foregroundStyle(Theme.textTertiary)
+                                        .monospacedDigit()
+                                }
+                            }
                     }
                 }
             }

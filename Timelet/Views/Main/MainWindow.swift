@@ -10,7 +10,7 @@ struct MainWindow: View {
     var body: some View {
         @Bindable var ui = ui
         NavigationSplitView {
-            Sidebar(selection: $ui.selection)
+            Sidebar(selection: $ui.selection, today: engine.now)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
             detail
@@ -28,7 +28,7 @@ struct MainWindow: View {
         switch ui.selection {
         case .today: DayView(date: ui.selectedDate)
         case .week: WeekView(weekDate: ui.selectedDate)
-        case .statistics: StatisticsView()
+        case .statistics: StatisticsView(period: ui.statsPeriod, date: ui.selectedDate)
         }
     }
 
@@ -36,17 +36,26 @@ struct MainWindow: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if ui.selection != .statistics {
-            ToolbarItemGroup(placement: .navigation) {
-                Button { ui.shiftDay(-1) } label: { Image(systemName: "chevron.backward") }
-                    .help(ui.selection == .week ? "Previous week (⌘[)" : "Previous day (⌘[)")
-                Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
-                    .help(ui.selection == .week ? "Next week (⌘])" : "Next day (⌘])")
-                    .disabled(isCurrentPeriod)
-                if !isCurrentPeriod {
-                    Button(ui.selection == .week ? "This Week" : "Today") { ui.selectedDate = .now }
-                        .help("⌘T")
+        @Bindable var ui = ui
+        ToolbarItemGroup(placement: .navigation) {
+            Button { ui.shiftDay(-1) } label: { Image(systemName: "chevron.backward") }
+                .help("Previous \(ui.pagingName.lowercased()) (⌘[)")
+            Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
+                .help("Next \(ui.pagingName.lowercased()) (⌘])")
+                .disabled(isCurrentPeriod)
+            if !isCurrentPeriod {
+                Button(currentPeriodTitle) { ui.selectedDate = .now }
+                    .help("⌘T")
+            }
+        }
+        if ui.selection == .statistics {
+            ToolbarItem(placement: .navigation) {
+                Picker("Period", selection: $ui.statsPeriod) {
+                    ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
             }
         }
         ToolbarItemGroup(placement: .primaryAction) {
@@ -55,6 +64,14 @@ struct MainWindow: View {
                 .help("Check in — switch or start a task (⌘K)")
             Button { ui.requestAddEntry() } label: { Label("Add time", systemImage: "plus") }
                 .help("Add time manually (⌘N)")
+        }
+    }
+
+    private var currentPeriodTitle: String {
+        switch ui.pagingUnit {
+        case .weekOfYear: "This Week"
+        case .month: "This Month"
+        default: "Today"
         }
     }
 
@@ -72,16 +89,11 @@ struct MainWindow: View {
         switch ui.selection {
         case .today: Format.longDate(ui.selectedDate)
         case .week: Format.weekSubtitle(ui.selectedDate)
-        case .statistics: ""
+        case .statistics: ui.statsPeriod.title(ui.selectedDate, now: engine.now)
         }
     }
 
     private var isCurrentPeriod: Bool {
-        let cal = Calendar.current
-        switch ui.selection {
-        case .today: return cal.isDate(ui.selectedDate, inSameDayAs: engine.now)
-        case .week: return cal.dateInterval(of: .weekOfYear, for: engine.now)?.contains(ui.selectedDate) ?? false
-        case .statistics: return true
-        }
+        Calendar.current.isDate(ui.selectedDate, equalTo: engine.now, toGranularity: ui.pagingUnit)
     }
 }

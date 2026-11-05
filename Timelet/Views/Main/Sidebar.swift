@@ -12,6 +12,11 @@ struct Sidebar: View {
     @Environment(TrackingEngine.self) private var engine
     @Query(sort: \Project.order) private var projects: [Project]
     @Query private var entries: [Entry]
+
+    init(selection: Binding<SidebarItem>, today: Date) {
+        _selection = selection
+        _entries = Query(filter: Entry.starting(in: Format.dayInterval(today)))
+    }
     @State private var editingProject: Project?
     @State private var pendingDelete: Project?
 

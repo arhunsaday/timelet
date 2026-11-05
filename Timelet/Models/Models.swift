@@ -78,3 +78,11 @@ final class Entry {
         return note
     }
 }
+
+extension Entry {
+    /// Entries that start inside `interval`: the scope of every per-day and per-period view.
+    static func starting(in interval: DateInterval) -> Predicate<Entry> {
+        let s = interval.start, e = interval.end
+        return #Predicate { $0.start >= s && $0.start < e }
+    }
+}

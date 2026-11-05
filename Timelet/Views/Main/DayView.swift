@@ -8,8 +8,13 @@ struct DayView: View {
     @Environment(TrackingEngine.self) private var engine
     @Environment(AppSettings.self) private var settings
     @Environment(UICoordinator.self) private var ui
-    @Query(sort: \Entry.start, order: .reverse) private var entries: [Entry]
+    @Query private var entries: [Entry]
     @State private var editing: Entry?
+
+    init(date: Date) {
+        self.date = date
+        _entries = Query(filter: Entry.starting(in: Format.dayInterval(date)), sort: \Entry.start)
+    }
 
     var body: some View {
         let summary = DaySummary.build(entries: entries, day: date, now: engine.now)
