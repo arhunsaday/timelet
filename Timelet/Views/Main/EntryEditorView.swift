@@ -39,25 +39,25 @@ struct EntryEditorView: View {
 
             labeled("Task") { TaskField(text: $text) }
 
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
                 labeled("Start") {
-                    DatePicker("", selection: $start, in: ...(isRunning ? engine.now : end), displayedComponents: [.date, .hourAndMinute])
-                        .labelsHidden()
+                    VStack(alignment: .leading, spacing: 6) {
+                        DatePicker("", selection: $start, in: ...(isRunning ? engine.now : end), displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                        nudges { m in
+                            let latest = (isRunning ? engine.now : end).addingTimeInterval(-60)
+                            start = min(latest, start.addingTimeInterval(TimeInterval(m * 60)))
+                        }
+                    }
                 }
                 if !isRunning {
                     labeled("End") {
-                        DatePicker("", selection: $end, in: start..., displayedComponents: [.hourAndMinute])
-                            .labelsHidden()
+                        VStack(alignment: .leading, spacing: 6) {
+                            DatePicker("", selection: $end, in: start..., displayedComponents: [.hourAndMinute])
+                                .labelsHidden()
+                            nudges { m in end = max(start.addingTimeInterval(60), end.addingTimeInterval(TimeInterval(m * 60))) }
+                        }
                     }
-                }
-            }
-            if !isRunning {
-                HStack(spacing: 6) {
-                    ForEach([-15, -5, 5, 15], id: \.self) { m in
-                        Button(m > 0 ? "+\(m)m" : "\(m)m") { end = max(start.addingTimeInterval(60), end.addingTimeInterval(TimeInterval(m * 60))) }
-                            .controlSize(.small)
-                    }
-                    Text("end").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
                 }
             }
 
@@ -99,6 +99,18 @@ struct EntryEditorView: View {
         }
         .padding(20)
         .frame(width: 440)
+    }
+
+    /// −15 −5 +5 +15 minute steps for one end of the interval.
+    private func nudges(_ apply: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 4) {
+            ForEach([-15, -5, 5, 15], id: \.self) { m in
+                Button(m > 0 ? "+\(m)" : "−\(-m)") { apply(m) }
+                    .controlSize(.small)
+                    .monospacedDigit()
+                    .help("\(m > 0 ? "Later" : "Earlier") by \(abs(m)) minutes")
+            }
+        }
     }
 
     private func labeled(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
