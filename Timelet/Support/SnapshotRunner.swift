@@ -148,6 +148,12 @@ enum SnapshotRunner {
                       app: app, to: dir.appendingPathComponent("3e_idle.png"))
 
             renderApp(AddEntryView(request: AddEntryRequest(day: app.engine.now)), app: app, to: dir.appendingPathComponent("3g_add.png"))
+            for (event, name) in [(BreakReminder.Event.due(worked: 95 * 60), "3k_break_due"), (.breakOver, "3l_break_over")] {
+                renderApp(BreakCard(event: event, reminder: app.breakReminder, engine: app.engine,
+                                    breakMinutes: app.settings.pomodoroShortBreakMinutes, onClose: {})
+                            .padding(20).background(Theme.contentBackground),
+                          app: app, to: dir.appendingPathComponent("\(name).png"))
+            }
             for (event, name) in [(Pomodoro.Event.focusEnded(next: .shortBreak), "3h_focus_done"), (.breakEnded, "3i_break_over")] {
                 renderApp(PomodoroCard(event: event, pomodoro: app.pomodoro, engine: app.engine, onSwitch: {}, onClose: {})
                             .padding(20).background(Theme.contentBackground),

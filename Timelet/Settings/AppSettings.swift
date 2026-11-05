@@ -89,7 +89,10 @@ final class AppSettings {
     var pomodoroLongBreakMinutes: Int { didSet { d.set(pomodoroLongBreakMinutes, forKey: Key.pomodoroLongBreak) } }
     /// A long break replaces the short one after this many focus sessions.
     var pomodoroLongBreakEvery: Int { didSet { d.set(pomodoroLongBreakEvery, forKey: Key.pomodoroLongBreakEvery) } }
-    var pomodoroSound: Bool { didSet { d.set(pomodoroSound, forKey: Key.pomodoroSound) } }
+    /// Suggest a break after this many minutes of continuous work (0 = off).
+    var breakReminderMinutes: Int { didSet { d.set(breakReminderMinutes, forKey: Key.breakReminder) } }
+    /// Chime when a focus session, a break or a work stretch ends.
+    var playsSounds: Bool { didSet { d.set(playsSounds, forKey: Key.playsSounds) } }
 
     // Shortcuts (nil = none)
     var checkInHotkey: KeyCombo? {
@@ -123,6 +126,7 @@ final class AppSettings {
     static let shortBreakOptions = [3, 5, 10, 15]
     static let longBreakOptions = [10, 15, 20, 30]
     static let longBreakEveryOptions = [2, 3, 4, 5, 6]
+    static let breakReminderOptions = [0, 45, 60, 75, 90, 120]
 
     @ObservationIgnored private let d: UserDefaults
     @ObservationIgnored var onHotkeysChanged: (() -> Void)?
@@ -143,7 +147,8 @@ final class AppSettings {
         pomodoroShortBreakMinutes = d.object(forKey: Key.pomodoroShortBreak) as? Int ?? 5
         pomodoroLongBreakMinutes = d.object(forKey: Key.pomodoroLongBreak) as? Int ?? 15
         pomodoroLongBreakEvery = d.object(forKey: Key.pomodoroLongBreakEvery) as? Int ?? 4
-        pomodoroSound = d.object(forKey: Key.pomodoroSound) as? Bool ?? true
+        breakReminderMinutes = d.object(forKey: Key.breakReminder) as? Int ?? 90
+        playsSounds = d.object(forKey: Key.playsSounds) as? Bool ?? true
         checkInHotkey = Self.load(d, Key.checkInHotkey, default: .checkInDefault)
         pauseHotkey = Self.load(d, Key.pauseHotkey, default: .pauseDefault)
         appearance = AppearanceMode(rawValue: d.string(forKey: Key.appearance) ?? "") ?? .auto
@@ -184,7 +189,8 @@ final class AppSettings {
         static let pomodoroShortBreak = "pomodoroShortBreakMinutes"
         static let pomodoroLongBreak = "pomodoroLongBreakMinutes"
         static let pomodoroLongBreakEvery = "pomodoroLongBreakEvery"
-        static let pomodoroSound = "pomodoroSound"
+        static let breakReminder = "breakReminderMinutes"
+        static let playsSounds = "playsSounds"
         static let checkInHotkey = "checkInHotkey"
         static let pauseHotkey = "pauseHotkey"
         static let appearance = "appearance"

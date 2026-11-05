@@ -98,11 +98,11 @@ struct GeneralSettingsContent: View {
                 SettingsFootnote(text: "Affects totals and exports only; recorded times are kept exact.")
             }
 
-            SettingsSectionLabel(text: "FOCUS SESSIONS").padding(.top, 8)
+            SettingsSectionLabel(text: "FOCUS AND BREAKS").padding(.top, 8)
             SettingsCard {
-                minutesRow("Focus", $settings.pomodoroFocusMinutes, AppSettings.focusOptions)
+                minutesRow("Focus session", $settings.pomodoroFocusMinutes, AppSettings.focusOptions)
                 Hairline()
-                minutesRow("Short break", $settings.pomodoroShortBreakMinutes, AppSettings.shortBreakOptions)
+                minutesRow("Break", $settings.pomodoroShortBreakMinutes, AppSettings.shortBreakOptions)
                 Hairline()
                 minutesRow("Long break", $settings.pomodoroLongBreakMinutes, AppSettings.longBreakOptions)
                 Hairline()
@@ -112,12 +112,22 @@ struct GeneralSettingsContent: View {
                     }
                     .labelsHidden().pickerStyle(.menu).fixedSize()
                 }
+                SettingsFootnote(text: "Breaks pause tracking and the task resumes when they end. Check-ins wait while you focus.")
                 Hairline()
-                SettingsRow(label: "Play a sound") {
-                    Toggle("", isOn: $settings.pomodoroSound)
+                SettingsRow(label: "Suggest a break after") {
+                    Picker("", selection: $settings.breakReminderMinutes) {
+                        ForEach(AppSettings.breakReminderOptions, id: \.self) { m in
+                            Text(m == 0 ? "Never" : m % 60 == 0 ? "\(m / 60) \(m == 60 ? "hour" : "hours")" : "\(m) minutes").tag(m)
+                        }
+                    }
+                    .labelsHidden().pickerStyle(.menu).fixedSize()
+                }
+                SettingsFootnote(text: "Counts work across task switches; stopping or being away for 5 minutes resets it.")
+                Hairline()
+                SettingsRow(label: "Play sounds") {
+                    Toggle("", isOn: $settings.playsSounds)
                         .labelsHidden().toggleStyle(.switch).tint(Theme.toggleOn)
                 }
-                SettingsFootnote(text: "Breaks pause tracking and the task resumes when they end. Check-ins wait while you focus.")
             }
 
             SettingsSectionLabel(text: "APPEARANCE").padding(.top, 8)

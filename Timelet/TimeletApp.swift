@@ -74,6 +74,7 @@ final class AppModel {
     let settings: AppSettings
     let engine: TrackingEngine
     let pomodoro: Pomodoro
+    let breakReminder: BreakReminder
     let checkIn: CheckInController
     let ui: UICoordinator
 
@@ -107,11 +108,17 @@ final class AppModel {
         pomodoro.onEvent = { [weak checkIn, weak pomodoro] event in
             if let pomodoro { checkIn?.announce(event, pomodoro: pomodoro) }
         }
+        checkIn.pomodoro = pomodoro
+        let breakReminder = BreakReminder(engine: engine, pomodoro: pomodoro, settings: settings)
+        breakReminder.onEvent = { [weak checkIn, weak breakReminder] event in
+            if let breakReminder { checkIn?.announce(event, reminder: breakReminder) }
+        }
 
         self.settings = settings
         self.container = container
         self.engine = engine
         self.pomodoro = pomodoro
+        self.breakReminder = breakReminder
         self.checkIn = checkIn
         self.ui = UICoordinator()
 

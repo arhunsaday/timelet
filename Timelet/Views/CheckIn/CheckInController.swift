@@ -13,6 +13,7 @@ final class CheckInController {
     @ObservationIgnored private var nudgeTimeout: Task<Void, Never>?
     @ObservationIgnored private weak var engine: TrackingEngine?
     @ObservationIgnored private var settings: AppSettings?
+    @ObservationIgnored weak var pomodoro: Pomodoro?
 
     private(set) var isPresented = false
     private(set) var isNudging = false
@@ -98,12 +99,22 @@ final class CheckInController {
     /// Announces the end of a focus session or a break in the corner card slot.
     func announce(_ event: Pomodoro.Event, pomodoro: Pomodoro) {
         guard let engine, !isPresented else { return }
-        if settings?.pomodoroSound ?? true { NSSound(named: event == .breakEnded ? "Hero" : "Glass")?.play() }
+        if settings?.playsSounds ?? true { NSSound(named: event == .breakEnded ? "Hero" : "Glass")?.play() }
         showCard(PomodoroCard(
             event: event, pomodoro: pomodoro, engine: engine,
             onSwitch: { [weak self] in self?.present() },
             onClose: { [weak self] in self?.hideNudge() }
         ), lifetime: 30) {}
+    }
+
+    /// Suggests a break, or says the break is over.
+    func announce(_ event: BreakReminder.Event, reminder: BreakReminder) {
+        guard let engine, let settings, !isPresented else { return }
+        if settings.playsSounds { NSSound(named: event == .breakOver ? "Hero" : "Purr")?.play() }
+        showCard(BreakCard(event: event, reminder: reminder, engine: engine,
+                           breakMinutes: settings.pomodoroShortBreakMinutes,
+                           onClose: { [weak self] in self?.hideNudge() }),
+                 lifetime: event == .breakOver ? 10 * 60 : 60) {}
     }
 
     /// Shows `view` as the corner card; after `lifetime` it hides and `onTimeout` runs.
