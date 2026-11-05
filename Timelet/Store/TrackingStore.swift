@@ -43,6 +43,8 @@ final class TrackingEngine: TrackingStore {
     /// UI hooks (wired to the check-in panel by the app).
     @ObservationIgnored var onAskDue: (() -> Void)?
     @ObservationIgnored var onAwayReturn: ((TimeInterval) -> Void)?
+    /// While this returns true, scheduled check-ins wait (a focus session is running).
+    @ObservationIgnored var asksSuppressed: () -> Bool = { false }
     /// Injectable for tests.
     @ObservationIgnored var idleSeconds: () -> TimeInterval = IdleMonitor.idleSeconds
 
@@ -281,7 +283,7 @@ final class TrackingEngine: TrackingStore {
 
     /// Whether a scheduled check-in would show right now.
     var canAsk: Bool {
-        !isPaused && !isSnoozed && pendingAway == nil && settings.isWorkTime(now)
+        !isPaused && !isSnoozed && pendingAway == nil && !asksSuppressed() && settings.isWorkTime(now)
     }
 
     // MARK: - Away periods (idle, sleep, lock, quit)

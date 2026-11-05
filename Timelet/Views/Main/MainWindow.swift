@@ -5,6 +5,8 @@ struct MainWindow: View {
     @Environment(TrackingEngine.self) private var engine
     @Environment(UICoordinator.self) private var ui
     @Environment(CheckInController.self) private var checkIn
+    @Environment(Pomodoro.self) private var pomodoro
+    @Environment(AppSettings.self) private var settings
     @Environment(\.openWindow) private var openWindow
     @State private var pickingDate = false
 
@@ -65,6 +67,11 @@ struct MainWindow: View {
         }
         ToolbarItemGroup(placement: .primaryAction) {
             TrackingPill()
+            Button { pomodoro.isActive ? pomodoro.stop() : pomodoro.start() } label: {
+                Label(pomodoro.isActive ? "Stop focus" : "Focus", systemImage: pomodoro.isActive ? "target" : "scope")
+            }
+            .help(pomodoro.isActive ? "Stop the focus session (⌥⌘F)" : "Start a \(settings.pomodoroFocusMinutes)-minute focus session (⌥⌘F)")
+            .disabled(!pomodoro.isActive && engine.runningEntry == nil && engine.lastActivityLabel == nil)
             Button { checkIn.present() } label: { Label("Check in", systemImage: "timer") }
                 .help("Check in — switch or start a task (⌘K)")
             Button { ui.requestAddEntry() } label: { Label("Add time", systemImage: "plus") }

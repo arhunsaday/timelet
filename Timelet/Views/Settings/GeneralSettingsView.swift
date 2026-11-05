@@ -98,6 +98,28 @@ struct GeneralSettingsContent: View {
                 SettingsFootnote(text: "Affects totals and exports only; recorded times are kept exact.")
             }
 
+            SettingsSectionLabel(text: "FOCUS SESSIONS").padding(.top, 8)
+            SettingsCard {
+                minutesRow("Focus", $settings.pomodoroFocusMinutes, AppSettings.focusOptions)
+                Hairline()
+                minutesRow("Short break", $settings.pomodoroShortBreakMinutes, AppSettings.shortBreakOptions)
+                Hairline()
+                minutesRow("Long break", $settings.pomodoroLongBreakMinutes, AppSettings.longBreakOptions)
+                Hairline()
+                SettingsRow(label: "Long break after") {
+                    Picker("", selection: $settings.pomodoroLongBreakEvery) {
+                        ForEach(AppSettings.longBreakEveryOptions, id: \.self) { Text("\($0) sessions").tag($0) }
+                    }
+                    .labelsHidden().pickerStyle(.menu).fixedSize()
+                }
+                Hairline()
+                SettingsRow(label: "Play a sound") {
+                    Toggle("", isOn: $settings.pomodoroSound)
+                        .labelsHidden().toggleStyle(.switch).tint(Theme.toggleOn)
+                }
+                SettingsFootnote(text: "Breaks pause tracking and the task resumes when they end. Check-ins wait while you focus.")
+            }
+
             SettingsSectionLabel(text: "APPEARANCE").padding(.top, 8)
             SettingsCard {
                 SettingsRow(label: "Appearance") {
@@ -150,6 +172,15 @@ struct GeneralSettingsContent: View {
     }
 
     /// Binds a minutes-from-midnight setting to a `Date` for the time pickers.
+    private func minutesRow(_ label: String, _ value: Binding<Int>, _ options: [Int]) -> some View {
+        SettingsRow(label: label) {
+            Picker("", selection: value) {
+                ForEach(options, id: \.self) { Text("\($0) minutes").tag($0) }
+            }
+            .labelsHidden().pickerStyle(.menu).fixedSize()
+        }
+    }
+
     private func timeBinding(_ keyPath: ReferenceWritableKeyPath<AppSettings, Int>) -> Binding<Date> {
         Binding(
             get: { settingsEnv[keyPath: keyPath].asTimeOfDayToday },

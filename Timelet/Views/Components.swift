@@ -91,6 +91,7 @@ struct DisclosureChevron: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .help(expanded ? "Hide note" : "Show note")
     }
 }

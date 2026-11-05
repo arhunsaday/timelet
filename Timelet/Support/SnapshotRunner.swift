@@ -42,6 +42,7 @@ enum SnapshotRunner {
                     case "key": postNamedKey(arg)
                     case "wait": try? await Task.sleep(for: .seconds(Double(arg) ?? 1))
                     case "track": app.engine.track(arg)
+                    case "focus": app.pomodoro.start()
                     case "log": logState(app, arg)
                     case "quit": NSApp.terminate(nil)
                     default: break
@@ -138,6 +139,11 @@ enum SnapshotRunner {
                       app: app, to: dir.appendingPathComponent("3e_idle.png"))
 
             renderApp(AddEntryView(request: AddEntryRequest(day: app.engine.now)), app: app, to: dir.appendingPathComponent("3g_add.png"))
+            for (event, name) in [(Pomodoro.Event.focusEnded(next: .shortBreak), "3h_focus_done"), (.breakEnded, "3i_break_over")] {
+                renderApp(PomodoroCard(event: event, pomodoro: app.pomodoro, engine: app.engine, onSwitch: {}, onClose: {})
+                            .padding(20).background(Theme.contentBackground),
+                          app: app, to: dir.appendingPathComponent("\(name).png"))
+            }
 
             // Note display demo (an expanded row) — the live store may have no notes yet.
             renderApp(
@@ -207,6 +213,7 @@ enum SnapshotRunner {
         let wrapped = view
             .environment(app)
             .environment(app.engine)
+            .environment(app.pomodoro)
             .environment(app.settings)
             .environment(app.checkIn)
             .environment(app.ui)

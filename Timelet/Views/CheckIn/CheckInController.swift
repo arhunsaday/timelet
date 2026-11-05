@@ -77,9 +77,7 @@ final class CheckInController {
 
     private func showNudge() {
         guard let engine else { return }
-        let panel = nudgePanel ?? FloatingPanel(acceptsKey: false)
-        nudgePanel = panel
-        let view = NudgeView(
+        showCard(NudgeView(
             engine: engine,
             lifetime: Self.nudgeLifetime,
             onKeepGoing: { [weak self] in
@@ -91,7 +89,27 @@ final class CheckInController {
                 self?.engine?.snooze(for: seconds)
                 self?.hideNudge()
             }
-        )
+        ), lifetime: Self.nudgeLifetime) { [weak self] in
+            // Ignored: the current task simply keeps running.
+            self?.engine?.markCheckedIn()
+        }
+    }
+
+    /// Announces the end of a focus session or a break in the corner card slot.
+    func announce(_ event: Pomodoro.Event, pomodoro: Pomodoro) {
+        guard let engine, !isPresented else { return }
+        if settings?.pomodoroSound ?? true { NSSound(named: event == .breakEnded ? "Hero" : "Glass")?.play() }
+        showCard(PomodoroCard(
+            event: event, pomodoro: pomodoro, engine: engine,
+            onSwitch: { [weak self] in self?.present() },
+            onClose: { [weak self] in self?.hideNudge() }
+        ), lifetime: 30) {}
+    }
+
+    /// Shows `view` as the corner card; after `lifetime` it hides and `onTimeout` runs.
+    private func showCard(_ view: some View, lifetime: TimeInterval, onTimeout: @escaping () -> Void) {
+        let panel = nudgePanel ?? FloatingPanel(acceptsKey: false)
+        nudgePanel = panel
         let hosting = NSHostingView(rootView: view)
         panel.contentView = hosting
         panel.setContentSize(hosting.fittingSize)
@@ -108,10 +126,9 @@ final class CheckInController {
         isNudging = true
         nudgeTimeout?.cancel()
         nudgeTimeout = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.nudgeLifetime))
+            try? await Task.sleep(for: .seconds(lifetime))
             guard !Task.isCancelled else { return }
-            // Ignored: the current task simply keeps running.
-            self?.engine?.markCheckedIn()
+            onTimeout()
             self?.hideNudge()
         }
     }

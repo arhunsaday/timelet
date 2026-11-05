@@ -83,6 +83,14 @@ final class AppSettings {
     var idleThresholdMinutes: Int { didSet { d.set(idleThresholdMinutes, forKey: Key.idleThreshold) } }
     var checkInStyle: CheckInStyle { didSet { d.set(checkInStyle.rawValue, forKey: Key.checkInStyle) } }
 
+    // Focus sessions (Pomodoro)
+    var pomodoroFocusMinutes: Int { didSet { d.set(pomodoroFocusMinutes, forKey: Key.pomodoroFocus) } }
+    var pomodoroShortBreakMinutes: Int { didSet { d.set(pomodoroShortBreakMinutes, forKey: Key.pomodoroShortBreak) } }
+    var pomodoroLongBreakMinutes: Int { didSet { d.set(pomodoroLongBreakMinutes, forKey: Key.pomodoroLongBreak) } }
+    /// A long break replaces the short one after this many focus sessions.
+    var pomodoroLongBreakEvery: Int { didSet { d.set(pomodoroLongBreakEvery, forKey: Key.pomodoroLongBreakEvery) } }
+    var pomodoroSound: Bool { didSet { d.set(pomodoroSound, forKey: Key.pomodoroSound) } }
+
     // Shortcuts (nil = none)
     var checkInHotkey: KeyCombo? {
         didSet {
@@ -111,6 +119,10 @@ final class AppSettings {
     static let intervalOptions = [5, 10, 15, 20, 30, 45, 60, 90]
     static let roundingOptions = [0, 1, 5, 6, 10, 15, 30]
     static let idleOptions = [3, 5, 10, 15, 30]
+    static let focusOptions = [15, 20, 25, 30, 45, 50, 60, 90]
+    static let shortBreakOptions = [3, 5, 10, 15]
+    static let longBreakOptions = [10, 15, 20, 30]
+    static let longBreakEveryOptions = [2, 3, 4, 5, 6]
 
     @ObservationIgnored private let d: UserDefaults
     @ObservationIgnored var onHotkeysChanged: (() -> Void)?
@@ -127,6 +139,11 @@ final class AppSettings {
         idleDetectionEnabled = d.object(forKey: Key.idleEnabled) as? Bool ?? true
         idleThresholdMinutes = d.object(forKey: Key.idleThreshold) as? Int ?? 5
         checkInStyle = CheckInStyle(rawValue: d.string(forKey: Key.checkInStyle) ?? "") ?? .gentle
+        pomodoroFocusMinutes = d.object(forKey: Key.pomodoroFocus) as? Int ?? 25
+        pomodoroShortBreakMinutes = d.object(forKey: Key.pomodoroShortBreak) as? Int ?? 5
+        pomodoroLongBreakMinutes = d.object(forKey: Key.pomodoroLongBreak) as? Int ?? 15
+        pomodoroLongBreakEvery = d.object(forKey: Key.pomodoroLongBreakEvery) as? Int ?? 4
+        pomodoroSound = d.object(forKey: Key.pomodoroSound) as? Bool ?? true
         checkInHotkey = Self.load(d, Key.checkInHotkey, default: .checkInDefault)
         pauseHotkey = Self.load(d, Key.pauseHotkey, default: .pauseDefault)
         appearance = AppearanceMode(rawValue: d.string(forKey: Key.appearance) ?? "") ?? .auto
@@ -163,6 +180,11 @@ final class AppSettings {
         static let idleEnabled = "idleDetectionEnabled"
         static let idleThreshold = "idleThresholdMinutes"
         static let checkInStyle = "checkInStyle"
+        static let pomodoroFocus = "pomodoroFocusMinutes"
+        static let pomodoroShortBreak = "pomodoroShortBreakMinutes"
+        static let pomodoroLongBreak = "pomodoroLongBreakMinutes"
+        static let pomodoroLongBreakEvery = "pomodoroLongBreakEvery"
+        static let pomodoroSound = "pomodoroSound"
         static let checkInHotkey = "checkInHotkey"
         static let pauseHotkey = "pauseHotkey"
         static let appearance = "appearance"

@@ -69,6 +69,7 @@ final class AppModel {
     let container: ModelContainer
     let settings: AppSettings
     let engine: TrackingEngine
+    let pomodoro: Pomodoro
     let checkIn: CheckInController
     let ui: UICoordinator
 
@@ -97,10 +98,16 @@ final class AppModel {
         checkIn.configure(engine: engine, settings: settings)
         engine.onAskDue = { [weak checkIn] in checkIn?.ask() }
         engine.onAwayReturn = { [weak checkIn] away in checkIn?.presentAway(seconds: away) }
+        let pomodoro = Pomodoro(engine: engine, settings: settings)
+        engine.asksSuppressed = { [weak pomodoro] in pomodoro?.isFocusing ?? false }
+        pomodoro.onEvent = { [weak checkIn, weak pomodoro] event in
+            if let pomodoro { checkIn?.announce(event, pomodoro: pomodoro) }
+        }
 
         self.settings = settings
         self.container = container
         self.engine = engine
+        self.pomodoro = pomodoro
         self.checkIn = checkIn
         self.ui = UICoordinator()
 
@@ -203,7 +210,7 @@ struct TimeletApp: App {
         MenuBarExtra {
             Root(app: app) { MenuBarPanel() }
         } label: {
-            MenuBarLabel().environment(app.engine).environment(app.settings)
+            MenuBarLabel().environment(app.engine).environment(app.settings).environment(app.pomodoro)
         }
         .menuBarExtraStyle(.window)
 
@@ -247,6 +254,18 @@ struct TimeletApp: App {
                 .disabled(app.engine.runningEntry == nil)
             Button("Done for Today") { app.engine.doneForToday() }
             Divider()
+            if app.pomodoro.isActive {
+                if app.pomodoro.isOnBreak {
+                    Button("Skip Break") { app.pomodoro.skipBreak() }
+                }
+                Button("Stop Focus Session") { app.pomodoro.stop() }
+                    .keyboardShortcut("f", modifiers: [.command, .option])
+            } else {
+                Button("Start Focus Session") { app.pomodoro.start() }
+                    .keyboardShortcut("f", modifiers: [.command, .option])
+                    .disabled(app.engine.runningEntry == nil && app.engine.lastActivityLabel == nil)
+            }
+            Divider()
             Menu("Stop Asking") {
                 Button("For 30 Minutes") { app.engine.snooze(for: 30 * 60) }
                 Button("For 1 Hour") { app.engine.snooze(for: 3600) }
@@ -269,6 +288,7 @@ private struct Root<Content: View>: View {
         content
             .environment(app)
             .environment(app.engine)
+            .environment(app.pomodoro)
             .environment(app.settings)
             .environment(app.checkIn)
             .environment(app.ui)

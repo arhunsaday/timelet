@@ -5,6 +5,8 @@ import SwiftUI
 struct MenuBarPanel: View {
     @Environment(TrackingEngine.self) private var engine
     @Environment(CheckInController.self) private var checkIn
+    @Environment(Pomodoro.self) private var pomodoro
+    @Environment(AppSettings.self) private var settings
     @Environment(UICoordinator.self) private var ui
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
@@ -69,6 +71,7 @@ struct MenuBarPanel: View {
                 if engine.runningEntry != nil {
                     MenuActionRow(icon: "stop.fill", title: "Stop") { engine.stopTracking() }
                 }
+                focusRows
                 MenuActionRow(icon: "moon", title: "Done for today") {
                     engine.doneForToday()
                     dismiss()
@@ -145,9 +148,28 @@ struct MenuBarPanel: View {
         .overlay(RoundedRectangle(cornerRadius: Radius.field, style: .continuous).strokeBorder(Theme.stroke, lineWidth: 0.5))
     }
 
+    @ViewBuilder private var focusRows: some View {
+        if pomodoro.isOnBreak {
+            MenuActionRow(icon: "forward.fill", title: "Skip break") { pomodoro.skipBreak() }
+        }
+        if pomodoro.isActive {
+            MenuActionRow(icon: "target", title: "Stop focus") { pomodoro.stop() }
+        } else if engine.runningEntry != nil || engine.lastActivityLabel != nil {
+            MenuActionRow(icon: "scope", title: "Focus for \(settings.pomodoroFocusMinutes) minutes") { pomodoro.start() }
+        }
+    }
+
     @ViewBuilder private var scheduleLine: some View {
         HStack(spacing: 6) {
-            if engine.isSnoozed, let until = engine.snoozedUntil {
+            if pomodoro.isFocusing {
+                Image(systemName: "target")
+                Text("Focus · \(Format.stopwatch(pomodoro.remaining)) left · session \(pomodoro.completed + 1)")
+                    .monospacedDigit()
+            } else if pomodoro.isOnBreak {
+                Image(systemName: "cup.and.saucer")
+                Text("Break · \(Format.stopwatch(pomodoro.remaining)) left")
+                    .monospacedDigit()
+            } else if engine.isSnoozed, let until = engine.snoozedUntil {
                 Image(systemName: "bell.slash.fill")
                 Text(Calendar.current.isDate(until, inSameDayAs: engine.now)
                      ? "Not asking until \(Format.clock(until))" : "Not asking until \(Format.weekdayShort(until)) \(Format.clock(until))")
