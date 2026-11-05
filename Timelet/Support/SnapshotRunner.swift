@@ -48,6 +48,8 @@ enum SnapshotRunner {
                         if let p = projects.first(where: { $0.name == arg }) { app.ui.show(.project(p.persistentModelID)) }
                     case "log": logState(app, arg)
                     case "quit": NSApp.terminate(nil)
+                    case "find": app.ui.searchRequest += 1
+                    case "search": app.ui.searchText = arg
                     default: break
                     }
                     try? await Task.sleep(for: .milliseconds(350))
@@ -196,7 +198,7 @@ enum SnapshotRunner {
         let map: [String: (String, UInt16)] = [
             "return": ("\r", 36), "tab": ("\t", 48), "esc": ("\u{1b}", 53),
             "down": (String(UnicodeScalar(NSDownArrowFunctionKey)!), 125), "up": (String(UnicodeScalar(NSUpArrowFunctionKey)!), 126),
-            "1": ("1", 18), "2": ("2", 19), "3": ("3", 20), "n": ("n", 45), "k": ("k", 40),
+            "1": ("1", 18), "2": ("2", 19), "3": ("3", 20), "n": ("n", 45), "k": ("k", 40), "f": ("f", 3),
         ]
         guard let (chars, code) = map[key] else { return }
         var flags: NSEvent.ModifierFlags = cmd ? [.command] : []

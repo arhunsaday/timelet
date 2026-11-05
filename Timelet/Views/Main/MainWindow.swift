@@ -20,10 +20,12 @@ struct MainWindow: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
             detail
-                .navigationTitle(navTitle)
-                .navigationSubtitle(navSubtitle)
+                .navigationTitle(isSearching ? "Search" : navTitle)
+                .navigationSubtitle(isSearching ? "" : navSubtitle)
                 .toolbar { toolbar }
         }
+        .searchable(text: $ui.searchText, placement: .toolbar, prompt: "Tasks and notes")
+        .modifier(SearchFocus(request: ui.searchRequest))
         .navigationSplitViewStyle(.balanced)
         .sheet(item: $ui.addEntry) { AddEntryView(request: $0) }
         .sheet(item: $editingProject) { ProjectEditorView(project: $0) }
@@ -31,8 +33,19 @@ struct MainWindow: View {
         .onChange(of: ui.pickDateRequest) { pickingDate = true }
     }
 
+    private var isSearching: Bool { !ui.searchText.trimmingCharacters(in: .whitespaces).isEmpty }
+
     @ViewBuilder
     private var detail: some View {
+        if isSearching {
+            SearchResultsView(query: ui.searchText)
+        } else {
+            selectedDetail
+        }
+    }
+
+    @ViewBuilder
+    private var selectedDetail: some View {
         switch ui.selection {
         case .today: DayView(date: ui.selectedDate)
         case .week: WeekView(weekDate: ui.selectedDate)
@@ -137,5 +150,22 @@ struct MainWindow: View {
 
     private var isCurrentPeriod: Bool {
         Calendar.current.isDate(ui.selectedDate, equalTo: engine.now, toGranularity: ui.pagingUnit)
+    }
+}
+
+/// Focuses the toolbar search field when Find (⌘F) is chosen. `searchFocused` needs macOS 15;
+/// on 14 the field is still a click away.
+private struct SearchFocus: ViewModifier {
+    let request: Int
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15, *) {
+            content
+                .searchFocused($focused)
+                .onChange(of: request) { focused = true }
+        } else {
+            content
+        }
     }
 }

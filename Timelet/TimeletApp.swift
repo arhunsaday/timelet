@@ -20,6 +20,9 @@ final class UICoordinator {
     var statsPeriod: StatsPeriod = .week
     /// Bumped by the Go to Date command; the main window opens its date picker.
     var pickDateRequest = 0
+    var searchText = ""
+    /// Bumped by the Find command; the main window focuses its search field.
+    var searchRequest = 0
     var addEntry: AddEntryRequest?
     @ObservationIgnored var openMainWindow: (() -> Void)?
 
@@ -228,6 +231,13 @@ struct TimeletApp: App {
             Divider()
             Button("Export CSV…") { Exporter.exportInteractively(engine: app.engine) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
+        }
+        CommandGroup(after: .textEditing) {
+            Button("Find…") {
+                app.ui.openDashboard()
+                app.ui.searchRequest += 1
+            }
+            .keyboardShortcut("f", modifiers: .command)
         }
         CommandGroup(after: .sidebar) {
             Button("Today") { app.ui.show(.today) }.keyboardShortcut("1", modifiers: .command)

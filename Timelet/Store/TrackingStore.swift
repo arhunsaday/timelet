@@ -413,6 +413,22 @@ final class TrackingEngine: TrackingStore {
         return (try? context.fetch(descriptor)) ?? []
     }
 
+    /// Blocks whose `Project: task` or note contains `query`, newest first. Archived projects
+    /// are included: search covers everything ever tracked.
+    func search(_ query: String, limit: Int = 300) -> [Entry] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+        let activities = (try? context.fetch(FetchDescriptor<Activity>())) ?? []
+        var found = activities.filter { $0.label.asDisplayLabel.localizedStandardContains(q) || $0.label.localizedStandardContains(q) }
+            .flatMap(\.entries)
+        let noted = (try? context.fetch(FetchDescriptor<Entry>(predicate: #Predicate { $0.note != nil }))) ?? []
+        found += noted.filter { $0.note?.localizedStandardContains(q) ?? false }
+        var seen = Set<PersistentIdentifier>()
+        return Array(found.filter { seen.insert($0.persistentModelID).inserted }
+            .sorted { $0.start > $1.start }
+            .prefix(limit))
+    }
+
     // MARK: - Ticking
 
     private func startTicker() {

@@ -330,4 +330,17 @@ final class TrackingEngineTests: XCTestCase {
         XCTAssertEqual(entries[0].end, start.addingTimeInterval(600))
         XCTAssertEqual(entries[0].start, start)
     }
+
+    // MARK: Search
+
+    func testSearchMatchesTaskProjectAndNoteOnce() {
+        engine.addEntry(text: "Client-X: Auth bugfix", start: start, end: start.addingTimeInterval(600), note: "token refresh")
+        engine.addEntry(text: "Timelet: Design", start: start.addingTimeInterval(600), end: start.addingTimeInterval(1200), note: "auth screen")
+        engine.addEntry(text: "Admin: Standup", start: start.addingTimeInterval(1200), end: start.addingTimeInterval(1800), note: nil)
+
+        XCTAssertEqual(engine.search("auth").map { $0.activity?.name }, ["Design", "Auth bugfix"])
+        XCTAssertEqual(engine.search("client-x: auth").count, 1)
+        XCTAssertEqual(engine.search("REFRESH").count, 1)
+        XCTAssertEqual(engine.search("  ").count, 0)
+    }
 }
