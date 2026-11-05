@@ -6,6 +6,7 @@ struct MainWindow: View {
     @Environment(UICoordinator.self) private var ui
     @Environment(CheckInController.self) private var checkIn
     @Environment(\.openWindow) private var openWindow
+    @State private var pickingDate = false
 
     var body: some View {
         @Bindable var ui = ui
@@ -21,6 +22,7 @@ struct MainWindow: View {
         .navigationSplitViewStyle(.balanced)
         .sheet(item: $ui.addEntry) { AddEntryView(request: $0) }
         .onAppear { ui.openMainWindow = { openWindow(id: "main") } }
+        .onChange(of: ui.pickDateRequest) { pickingDate = true }
     }
 
     @ViewBuilder
@@ -43,6 +45,9 @@ struct MainWindow: View {
             Button { ui.shiftDay(1) } label: { Image(systemName: "chevron.forward") }
                 .help("Next \(ui.pagingName.lowercased()) (⌘])")
                 .disabled(isCurrentPeriod)
+            Button { pickingDate.toggle() } label: { Image(systemName: "calendar") }
+                .help("Go to date… (⇧⌘T)")
+                .popover(isPresented: $pickingDate, arrowEdge: .bottom) { datePicker }
             if !isCurrentPeriod {
                 Button(currentPeriodTitle) { ui.selectedDate = .now }
                     .help("⌘T")
@@ -65,6 +70,16 @@ struct MainWindow: View {
             Button { ui.requestAddEntry() } label: { Label("Add time", systemImage: "plus") }
                 .help("Add time manually (⌘N)")
         }
+    }
+
+    private var datePicker: some View {
+        DatePicker("Go to date", selection: Binding(
+            get: { ui.selectedDate },
+            set: { ui.selectedDate = $0; pickingDate = false }
+        ), in: ...engine.now, displayedComponents: .date)
+        .datePickerStyle(.graphical)
+        .labelsHidden()
+        .padding(12)
     }
 
     private var currentPeriodTitle: String {

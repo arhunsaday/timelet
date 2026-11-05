@@ -18,6 +18,8 @@ final class UICoordinator {
     var selection: SidebarItem = .today
     var selectedDate: Date = .now
     var statsPeriod: StatsPeriod = .week
+    /// Bumped by the Go to Date command; the main window opens its date picker.
+    var pickDateRequest = 0
     var addEntry: AddEntryRequest?
     @ObservationIgnored var openMainWindow: (() -> Void)?
 
@@ -227,6 +229,11 @@ struct TimeletApp: App {
             Button("Previous \(app.ui.pagingName)") { app.ui.shiftDay(-1) }.keyboardShortcut("[", modifiers: .command)
             Button("Next \(app.ui.pagingName)") { app.ui.shiftDay(1) }.keyboardShortcut("]", modifiers: .command)
             Button("Go to Today") { app.ui.selectedDate = .now }.keyboardShortcut("t", modifiers: .command)
+            Button("Go to Date…") {
+                app.ui.openDashboard()
+                app.ui.pickDateRequest += 1
+            }
+            .keyboardShortcut("t", modifiers: [.command, .shift])
             Divider()
         }
         CommandMenu("Tracking") {

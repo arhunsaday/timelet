@@ -87,7 +87,7 @@ struct DisclosureChevron: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Theme.textQuaternary)
                 .rotationEffect(.degrees(expanded ? 90 : 0))
-                .frame(width: 20, height: 20)
+                .frame(width: 20, height: 16)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
