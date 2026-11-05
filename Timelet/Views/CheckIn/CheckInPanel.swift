@@ -10,10 +10,12 @@ enum CheckInMode {
 
 /// The "What are you working on?" check-in (screen 2b), also used for "Welcome back".
 ///
-/// Keyboard first: type to filter, ↑↓ to choose, ⇥ to complete, ⏎ to save, ⌘1–5 to pick a
-/// recent task, ⎋ to keep going. An empty field with ⏎ keeps the current task.
+/// Keyboard first: type to filter, ↑↓ to choose, ⇥ to complete, ⏎ to save (⌥⏎ to also start a
+/// focus session), ⌘1–5 to pick a recent task, ⎋ to keep going. An empty field with ⏎ keeps the
+/// current task.
 struct CheckInPanel: View {
     let engine: TrackingEngine
+    let pomodoro: Pomodoro?
     let mode: CheckInMode
     let onDone: () -> Void
 
@@ -26,8 +28,9 @@ struct CheckInPanel: View {
 
     private enum Field { case task, note }
 
-    init(engine: TrackingEngine, mode: CheckInMode, onDone: @escaping () -> Void) {
+    init(engine: TrackingEngine, pomodoro: Pomodoro?, mode: CheckInMode, onDone: @escaping () -> Void) {
         self.engine = engine
+        self.pomodoro = pomodoro
         self.mode = mode
         self.onDone = onDone
     }
@@ -171,7 +174,12 @@ struct CheckInPanel: View {
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textPrimary)
                 .focused($focus, equals: .task)
-                .onSubmit(primary)
+                .onKeyPress(.return, phases: .down) { press in
+                    guard press.modifiers.contains(.option), canFocus else { return .ignored }
+                    primary(focus: true)
+                    return .handled
+                }
+                .onSubmit { primary() }
                 .onChange(of: text) { selection = autoSelection() }
                 .onKeyPress(.tab) { complete() }
                 .onKeyPress(.downArrow) { move(1) }
@@ -254,7 +262,7 @@ struct CheckInPanel: View {
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(1...4)
             .focused($focus, equals: .note)
-            .onSubmit(primary)
+            .onSubmit { primary() }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(Theme.insetRow.opacity(0.6), in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
@@ -296,7 +304,7 @@ struct CheckInPanel: View {
             }
             .buttonStyle(SecondaryButtonStyle())
             .keyboardShortcut(.cancelAction)
-            Button(action: primary) {
+            Button { primary() } label: {
                 HStack(spacing: 5) {
                     Text(primaryTitle)
                     Text("⏎").opacity(0.8)
@@ -323,13 +331,16 @@ struct CheckInPanel: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            Text("↑↓ choose · ⇥ complete · ⌘1–5 pick")
+            Text(canFocus ? "↑↓ choose · ⇥ complete · ⌘1–5 pick · ⌥⏎ focus" : "↑↓ choose · ⇥ complete · ⌘1–5 pick")
             Spacer()
             if !mode.isAway {
                 Menu {
                     if isTracking {
                         Button("Pause") { engine.pause(); onDone() }
                         Button("Stop tracking") { engine.stopTracking(); onDone() }
+                    }
+                    if canFocus {
+                        Button("Start focus session (\(pomodoro?.minutes(for: .focus) ?? 25) min)") { primary(focus: true) }
                     }
                     Button("Done for today") { engine.doneForToday(); onDone() }
                     Divider()
@@ -362,13 +373,18 @@ struct CheckInPanel: View {
         return engine.projectColorHex(named: project) ?? Theme.palette[0]
     }
 
-    private func primary() {
+    /// A focus session can start from here unless one is already running.
+    private var canFocus: Bool { !mode.isAway && pomodoro.map { !$0.isActive } ?? false }
+
+    /// Does what ⏎ shows; `focus` also starts a focus session on the resulting task.
+    private func primary(focus: Bool = false) {
         switch intent {
         case .keep:
             if let current = currentLabel, !note.isEmpty { engine.track(current, note: note) } else { engine.continuePrevious() }
         case .start(let label): engine.track(label, note: note)
         case .logAway(let label): engine.logAway(as: label, note: note)
         }
+        if focus { pomodoro?.start() }
         onDone()
     }
 

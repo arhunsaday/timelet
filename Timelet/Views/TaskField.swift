@@ -6,6 +6,8 @@ struct TaskField: View {
     @Binding var text: String
     var placeholder = "Project: what you did"
     var autofocus = false
+    /// Labels listed first while the field is empty.
+    var preferred: [String] = []
     @Environment(TrackingEngine.self) private var engine
     @State private var all: [TaskSuggestion] = []
     @State private var selection: Int?
@@ -15,7 +17,12 @@ struct TaskField: View {
     private var matches: [TaskSuggestion] {
         let q = text.trimmingCharacters(in: .whitespaces)
         guard focused, dismissedFor != text else { return [] }
-        let ranked = Array(Ranking.rank(all, query: q).prefix(5))
+        var ranked = Ranking.rank(all, query: q)
+        if q.isEmpty, !preferred.isEmpty {
+            let first = preferred.compactMap { label in ranked.first { $0.label == label } }
+            ranked = first + ranked.filter { s in !first.contains { $0.label == s.label } }
+        }
+        ranked = Array(ranked.prefix(5))
         if ranked.count == 1, ranked[0].label.caseInsensitiveCompare(EntryParser.splitLabel(q).project + ":" + EntryParser.splitLabel(q).activity) == .orderedSame {
             return []
         }

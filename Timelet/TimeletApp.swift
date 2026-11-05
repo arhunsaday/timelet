@@ -9,6 +9,8 @@ struct AddEntryRequest: Identifiable, Equatable {
     var start: Date?
     var end: Date?
     var text: String = ""
+    /// Tasks to offer first, e.g. the blocks either side of a gap.
+    var suggested: [String] = []
 }
 
 /// Routes menu-command actions that need to reach a specific window/sheet.
@@ -26,9 +28,9 @@ final class UICoordinator {
     var addEntry: AddEntryRequest?
     @ObservationIgnored var openMainWindow: (() -> Void)?
 
-    func requestAddEntry(start: Date? = nil, end: Date? = nil, text: String = "") {
+    func requestAddEntry(start: Date? = nil, end: Date? = nil, text: String = "", suggested: [String] = []) {
         openDashboard()
-        addEntry = AddEntryRequest(day: start ?? selectedDate, start: start, end: end, text: text)
+        addEntry = AddEntryRequest(day: start ?? selectedDate, start: start, end: end, text: text, suggested: suggested)
     }
 
     func openDashboard() {

@@ -114,3 +114,31 @@ final class RankingTests: XCTestCase {
         XCTAssertEqual(Format.relative(now.addingTimeInterval(-600), now: now), "10m ago")
     }
 }
+
+final class LeadingDayTests: XCTestCase {
+    /// Thursday 5 Nov 2026, 15:00.
+    let now = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 15))!
+    private func day(_ d: Int) -> Date { Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: d))! }
+
+    func testDayWords() {
+        XCTAssertEqual(EntryParser.leadingDay("yesterday 9-10", now: now)?.day, day(4))
+        XCTAssertEqual(EntryParser.leadingDay("yesterday 9-10", now: now)?.rest, "9-10")
+        XCTAssertEqual(EntryParser.leadingDay("today 45m", now: now)?.day, day(5))
+        XCTAssertEqual(EntryParser.leadingDay("Yesterday", now: now)?.rest, "")
+    }
+
+    func testWeekdaysMeanTheLatestOccurrence() {
+        XCTAssertEqual(EntryParser.leadingDay("mon 2pm to 3pm", now: now)?.day, day(2))
+        XCTAssertEqual(EntryParser.leadingDay("Monday 9", now: now)?.day, day(2))
+        XCTAssertEqual(EntryParser.leadingDay("thu 9-10", now: now)?.day, day(5))   // today
+        XCTAssertEqual(EntryParser.leadingDay("fri. 9-10", now: now)?.day,
+                       Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 30)))
+    }
+
+    func testOtherTextIsNotADay() {
+        XCTAssertNil(EntryParser.leadingDay("45m", now: now))
+        XCTAssertNil(EntryParser.leadingDay("9-10", now: now))
+        XCTAssertNil(EntryParser.leadingDay("mo 9-10", now: now))
+        XCTAssertNil(EntryParser.leadingDay("2pm to 3pm", now: now))
+    }
+}

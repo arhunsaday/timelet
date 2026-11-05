@@ -104,7 +104,7 @@ enum SnapshotRunner {
 
             // 2b — check-in panel.
             renderApp(
-                CheckInPanel(engine: app.engine, mode: .regular, onDone: {}),
+                CheckInPanel(engine: app.engine, pomodoro: app.pomodoro, mode: .regular, onDone: {}),
                 app: app, to: dir.appendingPathComponent("2b_checkin.png"))
 
             // 2c — menu-bar popover.
@@ -144,7 +144,7 @@ enum SnapshotRunner {
             renderApp(StatisticsContent(period: .week, date: app.engine.now)
                         .frame(width: 700, alignment: .top).background(Theme.contentBackground),
                       app: app, to: dir.appendingPathComponent("3d_stats.png"))
-            renderApp(CheckInPanel(engine: app.engine, mode: .away(seconds: 12 * 60), onDone: {}),
+            renderApp(CheckInPanel(engine: app.engine, pomodoro: app.pomodoro, mode: .away(seconds: 12 * 60), onDone: {}),
                       app: app, to: dir.appendingPathComponent("3e_idle.png"))
 
             renderApp(AddEntryView(request: AddEntryRequest(day: app.engine.now)), app: app, to: dir.appendingPathComponent("3g_add.png"))
@@ -154,6 +154,10 @@ enum SnapshotRunner {
                             .padding(20).background(Theme.contentBackground),
                           app: app, to: dir.appendingPathComponent("\(name).png"))
             }
+            let gapStart = Calendar.current.date(bySettingHour: 11, minute: 0, second: 0, of: app.engine.now) ?? app.engine.now
+            renderApp(AddEntryView(request: AddEntryRequest(day: gapStart, start: gapStart, end: gapStart.addingTimeInterval(20 * 60),
+                                                            suggested: ["Timelet:Design mockups", "Client-X:Auth token bugfix"])),
+                      app: app, to: dir.appendingPathComponent("3m_add_gap.png"))
             for (event, name) in [(Pomodoro.Event.focusEnded(next: .shortBreak), "3h_focus_done"), (.breakEnded, "3i_break_over")] {
                 renderApp(PomodoroCard(event: event, pomodoro: app.pomodoro, engine: app.engine, onSwitch: {}, onClose: {})
                             .padding(20).background(Theme.contentBackground),

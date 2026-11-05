@@ -52,4 +52,22 @@ enum EntryParser {
         let (project, activity) = splitLabel(body)
         return ParsedCheckIn(project: project, activity: activity, start: start)
     }
+
+    /// A leading day in an "Add time" line: `yesterday 9-10`, `mon 2pm to 3pm`, `today 45m`.
+    /// A weekday means its latest occurrence up to today. Returns the day and the rest.
+    static func leadingDay(_ text: String, now: Date, calendar: Calendar = .current) -> (day: Date, rest: String)? {
+        guard let m = text.trimmingCharacters(in: .whitespaces).firstMatch(#"^([a-z]+)\.?(?:\s+(.*))?$"#) else { return nil }
+        let word = m[0].lowercased()
+        let rest = m[1].trimmingCharacters(in: .whitespaces)
+        let today = calendar.startOfDay(for: now)
+        switch word {
+        case "today": return (today, rest)
+        case "yesterday": return calendar.date(byAdding: .day, value: -1, to: today).map { ($0, rest) }
+        default:
+            let names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            guard word.count >= 3, let index = names.firstIndex(where: { $0.hasPrefix(word) }) else { return nil }
+            let back = (calendar.component(.weekday, from: today) - (index + 1) + 7) % 7
+            return calendar.date(byAdding: .day, value: -back, to: today).map { ($0, rest) }
+        }
+    }
 }

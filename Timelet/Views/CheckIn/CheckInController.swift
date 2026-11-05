@@ -47,6 +47,7 @@ final class CheckInController {
         hideNudge()
         show(CheckInPanel(
             engine: engine,
+            pomodoro: pomodoro,
             mode: .regular,
             onDone: { [weak self] in self?.dismiss() }
         ))
@@ -58,6 +59,7 @@ final class CheckInController {
         hideNudge()
         show(CheckInPanel(
             engine: engine,
+            pomodoro: nil,
             mode: .away(seconds: seconds),
             onDone: { [weak self] in self?.dismiss() }
         ))

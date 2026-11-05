@@ -144,6 +144,12 @@ struct DayTimeline: View {
         return summary.gaps(from: from, to: to)
     }
 
+    /// The tasks of the blocks just before and after `gap`.
+    private func neighbours(of gap: DateInterval) -> [String] {
+        [summary.blocks.last { $0.end == gap.start }, summary.blocks.first { $0.start == gap.end }]
+            .compactMap { $0?.entry.activity?.label }
+    }
+
     @ViewBuilder
     private func gapMenu(_ gap: DateInterval) -> some View {
         if let before = summary.blocks.last(where: { $0.end == gap.start && !$0.isRunning }),
@@ -154,7 +160,7 @@ struct DayTimeline: View {
             Button("Start \(label.asDisplayLabel) at \(Format.clock(gap.start))") { engine.extend(after.entry, over: gap) }
         }
         Divider()
-        Button("Add Time…") { ui.requestAddEntry(start: gap.start, end: gap.end) }
+        Button("Add Time…") { ui.requestAddEntry(start: gap.start, end: gap.end, suggested: neighbours(of: gap)) }
     }
 
     var body: some View {
@@ -175,7 +181,7 @@ struct DayTimeline: View {
                             .frame(width: max(4, x(g.end) - x(g.start) - 2), height: 26)
                             .offset(x: x(g.start) + 1, y: 3)
                             .onHover { hovered = $0 ? id : nil }
-                            .onTapGesture { ui.requestAddEntry(start: g.start, end: g.end) }
+                            .onTapGesture { ui.requestAddEntry(start: g.start, end: g.end, suggested: neighbours(of: g)) }
                             .contextMenu { gapMenu(g) }
                             .help("Untracked \(Format.timeRange(g.start, g.end)) (\(Format.duration(g.duration))) — click to fill, right-click to extend a neighbour")
                     }

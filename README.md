@@ -33,6 +33,7 @@ The check-in is built to be answered in under two seconds without touching the m
 | Type, then **⏎** | Start that task. A hint shows exactly what will start, and flags a new project |
 | **↑ ↓**, **⇥** | Choose a suggestion, or complete it into the field to edit it |
 | **⌘1 … ⌘5** | Pick one of the recent tasks shown |
+| **⌥⏎** | Start the task with a focus session |
 | **⎋** or click away | Keep going |
 | **⌘N** | Add a note to the entry |
 | `… 20m ago`, `… since 14:30`, `… @9:15` | Start the task in the past; the previous task ends at that moment |
@@ -49,8 +50,9 @@ Suggestions are ranked: whole-label prefix, then activity prefix, then word pref
 | **Statistics** | Charts by day and by project for any week or month |
 | **Projects** | Click a project in the sidebar: this week, this month, all time, its tasks ranked by time, and its latest blocks |
 | **Search** | **⌘F** finds any task, project or note across everything tracked |
+| **Breaks** | After 90 minutes of work without a break (configurable, across task switches), a card offers a short break that pauses tracking and offers to resume when it ends |
 | **Focus sessions** | Pomodoro on the running task (**⌥⌘F**): focus, then a break that pauses tracking and resumes the task when it ends. Check-ins wait while you focus. Lengths in Settings |
-| **Add time** | **⌘N**. One field understands `45m`, `1h30`, `9-10:30`, `2pm to 3:15pm`; it shows the exact interval, and warns about overlaps or future times |
+| **Add time** | **⌘N**. One field understands `45m`, `1h30`, `9-10:30`, `2pm to 3:15pm`, optionally after a day (`yesterday 9-10`, `mon 2pm to 3pm`); it shows the exact interval, and warns about overlaps or future times. Opened from a gap, it suggests the tasks either side first. **Add & Next** (⌥⏎) keeps it open for the next stretch |
 | **Edit** | Click any block. Autocomplete for the task, ±5/15 min nudges for start and end, *Track again*, delete (with **Undo**) |
 | **Menu bar** | Timer, task and timer, today's total, or icon only. The popover shows today's total, the next check-in, and switches to a recent task in one click |
 | **Work hours** | Days and hours when check-ins happen. **Done for today** stops and stays quiet until the next working day |
@@ -161,15 +163,16 @@ Timelet/
 ├── Models/                   # SwiftData @Model: Project · Activity · Entry  (+ SampleData)
 ├── Store/TrackingStore.swift # TrackingStore + TrackingEngine: tracking, check-in schedule, away time, launch recovery, search
 ├── Store/Pomodoro.swift      # focus/break cycle on top of the engine
+├── Store/BreakReminder.swift # break suggestions after long stretches of work
 ├── Settings/                 # AppSettings (UserDefaults-backed @Observable) · LoginItem (SMAppService)
 ├── Design/Theme.swift        # color / radius tokens from the handoff (light + tuned dark)
 ├── Support/                  # parsers (entries, durations, ranges) · Ranking · GlobalHotkey (Carbon) · IdleMonitor · Exporter
 └── Views/
     ├── Main/                 # NavigationSplitView: Sidebar · DayView (timeline) · WeekView · StatisticsView · ProjectDetailView · SearchResultsView · Add/Edit sheets
-    ├── CheckIn/              # FloatingPanel · CheckInController · CheckInPanel · NudgeView (gentle reminder) · PomodoroCard
+    ├── CheckIn/              # FloatingPanel · CheckInController · CheckInPanel · NudgeView (gentle reminder) · CornerCard (focus and break cards)
     ├── MenuBar/              # MenuBarExtra label + popover
     └── Settings/             # General · Shortcuts (recorder) · Projects
-TimeletTests/                 # parsing, ranking, TrackingEngine and Pomodoro with an in-memory store and a fake clock
+TimeletTests/                 # parsing, ranking, TrackingEngine, Pomodoro and BreakReminder with an in-memory store and a fake clock
 scripts/brand.swift           # draws the app icon at every size + brand/logo.svg
 ```
 
