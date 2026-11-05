@@ -308,4 +308,26 @@ final class TrackingEngineTests: XCTestCase {
         XCTAssertEqual(gaps.map(\.duration), [1800, 1800, 1800])
         XCTAssertEqual(summary.totalTracked, 5400)
     }
+
+    // MARK: Gaps
+
+    func testExtendStretchesTheBlockBeforeAndAfterAGap() {
+        let morning = start
+        engine.addEntry(text: "A: One", start: morning, end: morning.addingTimeInterval(3600), note: nil)
+        engine.addEntry(text: "B: Two", start: morning.addingTimeInterval(7200), end: morning.addingTimeInterval(9000), note: nil)
+        let halfway = morning.addingTimeInterval(5400)
+
+        engine.extend(entries[0], over: DateInterval(start: morning.addingTimeInterval(3600), end: halfway))
+        XCTAssertEqual(entries[0].end, halfway)
+
+        engine.extend(entries[1], over: DateInterval(start: halfway, end: morning.addingTimeInterval(7200)))
+        XCTAssertEqual(entries[1].start, halfway)
+    }
+
+    func testExtendIgnoresABlockThatDoesNotTouchTheGap() {
+        engine.addEntry(text: "A: One", start: start, end: start.addingTimeInterval(600), note: nil)
+        engine.extend(entries[0], over: DateInterval(start: start.addingTimeInterval(1200), duration: 600))
+        XCTAssertEqual(entries[0].end, start.addingTimeInterval(600))
+        XCTAssertEqual(entries[0].start, start)
+    }
 }

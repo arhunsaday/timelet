@@ -144,6 +144,19 @@ struct DayTimeline: View {
         return summary.gaps(from: from, to: to)
     }
 
+    @ViewBuilder
+    private func gapMenu(_ gap: DateInterval) -> some View {
+        if let before = summary.blocks.last(where: { $0.end == gap.start && !$0.isRunning }),
+           let label = before.entry.activity?.label {
+            Button("Extend \(label.asDisplayLabel) to \(Format.clock(gap.end))") { engine.extend(before.entry, over: gap) }
+        }
+        if let after = summary.blocks.first(where: { $0.start == gap.end }), let label = after.entry.activity?.label {
+            Button("Start \(label.asDisplayLabel) at \(Format.clock(gap.start))") { engine.extend(after.entry, over: gap) }
+        }
+        Divider()
+        Button("Add Time…") { ui.requestAddEntry(start: gap.start, end: gap.end) }
+    }
+
     var body: some View {
         let r = range
         let untracked = gaps.reduce(0) { $0 + $1.duration }
@@ -163,7 +176,8 @@ struct DayTimeline: View {
                             .offset(x: x(g.start) + 1, y: 3)
                             .onHover { hovered = $0 ? id : nil }
                             .onTapGesture { ui.requestAddEntry(start: g.start, end: g.end) }
-                            .help("Untracked \(Format.timeRange(g.start, g.end)) (\(Format.duration(g.duration))) — click to fill")
+                            .contextMenu { gapMenu(g) }
+                            .help("Untracked \(Format.timeRange(g.start, g.end)) (\(Format.duration(g.duration))) — click to fill, right-click to extend a neighbour")
                     }
                     ForEach(summary.blocks) { b in
                         let id = "\(b.id)"
@@ -201,7 +215,7 @@ struct DayTimeline: View {
             .padding(.horizontal, 12)
 
             if untracked >= 15 * 60 {
-                Text("\(Format.duration(untracked)) untracked\(isToday ? " so far" : "") · click a dashed gap to fill it")
+                Text("\(Format.duration(untracked)) untracked\(isToday ? " so far" : "") · click a dashed gap to fill it, right-click to extend a neighbour")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textTertiary)
                     .padding(.top, 2)

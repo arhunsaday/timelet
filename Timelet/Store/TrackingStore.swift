@@ -182,6 +182,19 @@ final class TrackingEngine: TrackingStore {
         save()
     }
 
+    /// Stretches a block over the untracked `gap` next to it: a block ending where the gap starts
+    /// now ends where it ends; a block starting where the gap ends now starts where it starts.
+    func extend(_ entry: Entry, over gap: DateInterval) {
+        if entry.end == gap.start {
+            entry.end = gap.end
+        } else if entry.start == gap.end {
+            entry.start = gap.start
+        } else {
+            return
+        }
+        save()
+    }
+
     func deleteEntry(_ entry: Entry) {
         if entry.persistentModelID == runningEntry?.persistentModelID { runningEntry = nil }
         if let end = entry.end, let label = entry.activity?.label {
