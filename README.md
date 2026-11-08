@@ -78,6 +78,15 @@ Suggestions are ranked: whole-label prefix, then activity prefix, then word pref
 
 The previous default, ⌘⇧T, took over "reopen closed tab" in every browser; the recorder warns about combos like that.
 
+## Install
+
+```bash
+brew trust --cask arhunsaday/tap/timelet
+brew install --cask arhunsaday/tap/timelet
+```
+
+Or download the DMG from [Releases](https://github.com/arhunsaday/timelet/releases/latest) and drag **Timelet** into Applications. Universal, macOS 14 or later, signed and notarized.
+
 ## Build & run
 
 Requires macOS 14+, Xcode 16+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`). The `.xcodeproj` is generated, not committed.
@@ -141,6 +150,7 @@ scripts/release.sh 1.2.0
 DMG). `DEVELOPER_ID="Developer ID Application: …"` picks an identity if you have several.
 
 Publish it by attaching the DMG to a GitHub Release (Releases → Draft a new release, tag `v1.2.0`).
+Then set `version` and `sha256` in [`Casks/timelet.rb`](https://github.com/arhunsaday/homebrew-tap/blob/main/Casks/timelet.rb) of the Homebrew tap.
 
 ### CI
 
