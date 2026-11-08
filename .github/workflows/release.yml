@@ -1,6 +1,6 @@
 name: Release
 
-# Builds a distributable macOS .app and publishes it as a GitHub Release.
+# Builds a signed, notarized Timelet DMG and publishes it as a GitHub Release.
 #
 # Normal path — push a version tag:
 #
@@ -9,9 +9,8 @@ name: Release
 # Or run it from the Actions tab ("Run workflow"), give it a version, and tick
 # "publish" — `gh release create` creates the tag for you.
 #
-# No paid Apple Developer account is involved: the app is ad-hoc signed
-# ("Sign to Run Locally") and NOT notarized, so the install instructions in the
-# release body explain how to get past Gatekeeper.
+# Signing and notarization use the repository secrets listed in
+# README › Distribution › CI. The same scripts/release.sh runs locally.
 
 on:
   push:
@@ -29,7 +28,7 @@ on:
         default: false
 
 permissions:
-  contents: write # create the release, upload the .zip, create the tag
+  contents: write # create the release, upload the DMG, create the tag
 
 concurrency:
   group: release-${{ github.ref }}
@@ -37,15 +36,15 @@ concurrency:
 
 jobs:
   build:
-    name: Build & publish macOS app
+    name: Build, notarize & publish
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history + tags so the changelog can diff against the previous tag
+          fetch-depth: 0 # full history: build number = commit count, changelog since the previous tag
 
       - name: Resolve version
         id: version
@@ -78,7 +77,7 @@ jobs:
             echo "tag=v${version}"
             echo "publish=$publish"
             echo "prerelease=$prerelease"
-            echo "zip_name=Timelet-${version}-macOS-universal.zip"
+            echo "dmg=dist/Timelet-${version}.dmg"
           } >> "$GITHUB_OUTPUT"
 
           echo "Timelet $version (publish=$publish, prerelease=$prerelease)"
@@ -87,7 +86,6 @@ jobs:
         run: |
           sw_vers
           xcodebuild -version
-          echo "Xcode path: $(xcode-select -p)"
 
       - name: Install XcodeGen
         env:
@@ -95,115 +93,86 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: brew install xcodegen
 
-      - name: Generate Xcode project
+      - name: Set up signing and notarization
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
           set -euo pipefail
-          xcodegen generate
-          xcodebuild -list -project Timelet.xcodeproj
-
-      - name: Build (Release, universal binary)
-        run: |
-          set -euo pipefail
-          xcodebuild build \
-            -project Timelet.xcodeproj \
-            -scheme Timelet \
-            -configuration Release \
-            -destination 'generic/platform=macOS' \
-            -derivedDataPath build \
-            ARCHS="arm64 x86_64" \
-            ONLY_ACTIVE_ARCH=NO \
-            MARKETING_VERSION="${{ steps.version.outputs.version }}" \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="-" \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            CODE_SIGNING_REQUIRED=NO
-
-      - name: Ad-hoc sign & verify
-        id: app
-        run: |
-          set -euo pipefail
-          app="$(find build/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
-          if [ -z "$app" ]; then
-            echo "::error::No .app was produced. Contents of build/Build/Products:"
-            find build/Build/Products -maxdepth 3 || true
+          missing=()
+          for name in DEVELOPER_ID_P12 DEVELOPER_ID_P12_PASSWORD NOTARY_KEY_P8 NOTARY_KEY_ID NOTARY_ISSUER_ID; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository secrets: ${missing[*]} (see README › Distribution › CI)"
             exit 1
           fi
-          echo "Built: $app"
 
-          # arm64 binaries must carry at least an ad-hoc signature or macOS
-          # refuses to launch them. Re-sign the whole bundle so the signature
-          # definitely covers the final universal binary and its resources.
-          codesign --force --sign - --timestamp=none "$app"
-          codesign --verify --deep --strict --verbose=2 "$app"
-          lipo -info "$app/Contents/MacOS/"* || true
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(uuidgen)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
 
-          echo "path=$app" >> "$GITHUB_OUTPUT"
+          printf '%s' "$DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -f pkcs12 \
+            -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+          # Prepend to the search list so codesign and find-identity see it.
+          existing=()
+          while IFS= read -r line; do existing+=("$(sed 's/^ *"//; s/"$//' <<<"$line")"); done \
+            < <(security list-keychains -d user)
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          security find-identity -v -p codesigning "$keychain"
 
-      - name: Package
-        id: package
-        run: |
-          set -euo pipefail
-          zip="${{ steps.version.outputs.zip_name }}"
-          # ditto (not `zip`) preserves bundle symlinks, resource forks and the
-          # code signature.
-          ditto -c -k --sequesterRsrc --keepParent "${{ steps.app.outputs.path }}" "$zip"
-          sha="$(shasum -a 256 "$zip" | awk '{print $1}')"
-          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
-          ls -lh "$zip"
-          echo "sha256: $sha"
+          printf '%s\n' "$NOTARY_KEY_P8" > "$RUNNER_TEMP/notary.p8"
+          xcrun notarytool store-credentials notary \
+            --key "$RUNNER_TEMP/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
+            --keychain "$keychain"
+          rm -f "$RUNNER_TEMP/notary.p8"
+
+          echo "NOTARY_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+      - name: Build, sign, notarize, package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/release.sh "$VERSION"
 
       # Always available, even for dry runs or if publishing fails.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: Timelet-${{ steps.version.outputs.version }}-macOS
-          path: ${{ steps.version.outputs.zip_name }}
+          path: ${{ steps.version.outputs.dmg }}
           if-no-files-found: error
           retention-days: 30
 
       - name: Write release notes
         if: steps.version.outputs.publish == 'true'
         env:
-          ZIP: ${{ steps.version.outputs.zip_name }}
-          SHA256: ${{ steps.package.outputs.sha256 }}
+          DMG: ${{ steps.version.outputs.dmg }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
+          name="$(basename "$DMG")"
+          sha="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 
-          # Quoted heredoc: no shell expansion, so backticks and $ stay literal.
-          # Placeholders are substituted afterwards from the env vars above.
-          cat > RELEASE_NOTES.md <<'EOF'
-          ### Download
-
-          **@ZIP@** below — universal (Apple Silicon + Intel), requires macOS 14 Sonoma or later.
-
-          ### Install
-
-          1. Unzip and drag **Timelet.app** into `/Applications`.
-          2. This build is **ad-hoc signed and not notarized** (there is no paid Apple
-             Developer account behind it), so macOS blocks it on first launch. Clear the
-             quarantine flag it picked up from the download:
-
-          ```bash
-          xattr -dr com.apple.quarantine /Applications/Timelet.app
-          ```
-
-          Then open it normally.
-
-          Prefer not to use Terminal? Open the app once and let it get blocked, then go to
-          **System Settings → Privacy & Security** and click **Open Anyway**.
-
-          ### Verify
-
-          ```
-          SHA-256  @SHA256@
-          ```
-          EOF
-
-          # Substitute placeholders (| as the sed delimiter — values contain no |).
-          sed -i '' -e "s|@ZIP@|${ZIP}|g" -e "s|@SHA256@|${SHA256}|g" RELEASE_NOTES.md
+          {
+            echo "### Install"
+            echo
+            echo "Download **${name}**, open it and drag **Timelet** into **Applications**."
+            echo "Universal (Apple Silicon + Intel), macOS 14 Sonoma or later. Signed and notarized by Apple."
+            echo
+            echo "### Verify"
+            echo
+            echo '```'
+            echo "SHA-256  ${sha}"
+            echo '```'
+          } > RELEASE_NOTES.md
 
           # Changelog since the previous tag, if there is one. On a tag build the
           # tag exists, so walk back from it; on a manual run it does not yet.
@@ -234,7 +203,7 @@ jobs:
         if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          ZIP: ${{ steps.version.outputs.zip_name }}
+          DMG: ${{ steps.version.outputs.dmg }}
           TAG: ${{ steps.version.outputs.tag }}
           TITLE: Timelet ${{ steps.version.outputs.version }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
@@ -245,5 +214,9 @@ jobs:
             args+=(--prerelease)
           fi
           # Creates the tag too, if it does not already exist.
-          gh release create "$TAG" "$ZIP" "${args[@]}"
+          gh release create "$TAG" "$DMG" "${args[@]}"
           echo "Published ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+
+      - name: Remove signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true

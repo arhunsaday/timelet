@@ -106,51 +106,66 @@ TIMELET_DATA_DIR=/tmp/timelet-demo TIMELET_SAMPLE=1 \
 
 `TIMELET_DATA_DIR` keeps the demo away from your real data; `TIMELET_SAMPLE=1` seeds a week of believable entries.
 
-## Releases (CI/CD)
+## Distribution
 
-Two GitHub Actions workflows, both on `macos-15` runners:
+Releases are DMGs signed with a **Developer ID** and **notarized** by Apple, so they open on any Mac
+with no Gatekeeper warning. Builds are universal (Apple Silicon + Intel).
 
-| Workflow | Trigger | What it does |
-| --- | --- | --- |
-| [`ci.yml`](.github/workflows/ci.yml) | push to `main`, PRs, manual | Debug build — "does it still compile" |
-| [`release.yml`](.github/workflows/release.yml) | push of a `v*` tag, manual | Release build → universal `.app` → zip → GitHub Release |
+| Script | What it does |
+| --- | --- |
+| [`scripts/release.sh`](scripts/release.sh) `[version]` | Universal Release build, then `distribute.sh` → `dist/Timelet-<version>.dmg` |
+| [`scripts/distribute.sh`](scripts/distribute.sh) `<app> <dmg>` | Developer ID signature with the hardened runtime, notarizes and staples the app, wraps it in a DMG, signs, notarizes and staples the DMG |
 
-Cut a release by pushing a tag; the version is taken from the tag name (`v1.2.3` → `MARKETING_VERSION=1.2.3`,
-with the run number as the build number):
+`distribute.sh` is identical in [cloud-cost-map](https://github.com/arhunsaday/cloud-cost-map).
+
+### One-time setup on your Mac
+
+1. **Certificate.** Xcode → Settings → Accounts → your team → **Manage Certificates…** → **+** →
+   **Developer ID Application**. Only the team's Account Holder can create one.
+2. **Notarization credentials**, stored in the login keychain under the profile name `notary`.
+   Create an app-specific password at [account.apple.com](https://account.apple.com) (Sign-In and
+   Security → App-Specific Passwords), find your Team ID at
+   [developer.apple.com/account](https://developer.apple.com/account) (Membership details), then:
+
+   ```bash
+   xcrun notarytool store-credentials notary --apple-id you@example.com --team-id ABCDE12345
+   ```
+
+### Building a release by hand
+
+```bash
+scripts/release.sh 1.2.0
+```
+
+`NOTARIZE=0 scripts/release.sh` signs without notarizing, for a quick check (other Macs will block that
+DMG). `DEVELOPER_ID="Developer ID Application: …"` picks an identity if you have several.
+
+Publish it by attaching the DMG to a GitHub Release (Releases → Draft a new release, tag `v1.2.0`).
+
+### CI
+
+[`release.yml`](.github/workflows/release.yml) runs the same script on a `macos-15` runner and publishes
+a GitHub Release. Trigger it by pushing a tag; the version is taken from the tag name:
 
 ```bash
 git tag v1.2.3
 git push origin v1.2.3
 ```
 
-Or, without tagging locally: **Actions → Release → Run workflow**, enter the version and tick
-**publish** — `gh release create` creates the tag at that commit. Leaving **publish** unticked just
-builds and uploads the artifact, which is handy for testing a change to the workflow itself.
+Or **Actions → Release → Run workflow**, enter the version and tick **publish**. Leaving **publish**
+unticked builds and uploads the DMG as a workflow artifact only. A version with a hyphen
+(`v1.2.3-rc1`) is published as a pre-release. [`ci.yml`](.github/workflows/ci.yml) builds and tests
+pushes to `main` and pull requests.
 
-The zip is attached to the [release](../../releases) and also kept as a workflow artifact for 30 days.
-A version containing a hyphen (`v1.2.3-rc1`) is published as a pre-release.
+`release.yml` needs these repository secrets (Settings → Secrets and variables → Actions):
 
-### No Apple Developer account
-
-There is no paid Apple Developer account behind this, so builds are **ad-hoc signed**
-(`CODE_SIGN_IDENTITY = "-"`, i.e. "Sign to Run Locally") and **not notarized**. Practical consequences:
-
-- Ad-hoc signing is not optional — arm64 binaries won't launch at all without at least an ad-hoc
-  signature — so the workflow re-signs the finished bundle with `codesign --force --sign -`.
-- The `.app` is zipped with `ditto`, not `zip`, so the bundle's symlinks and signature survive.
-- Gatekeeper blocks the app on first launch, because the download carries a quarantine flag. Clear it:
-
-  ```bash
-  xattr -dr com.apple.quarantine /Applications/Timelet.app
-  ```
-
-  Or open it once, let it be blocked, then **System Settings → Privacy & Security → Open Anyway**.
-  Each release body repeats these instructions.
-
-Builds are universal (`ARCHS = "arm64 x86_64"`), so the same download runs on Apple Silicon and Intel.
-
-> Note: this repo is private, and macOS runner minutes bill at 10× the Linux rate, so `ci.yml`
-> deliberately skips branch pushes and doc-only changes.
+| Secret | Value |
+| --- | --- |
+| `DEVELOPER_ID_P12` | The Developer ID Application certificate **with its private key**, exported from Keychain Access as `.p12`, then base64: `base64 -i DeveloperID.p12 \| pbcopy` |
+| `DEVELOPER_ID_P12_PASSWORD` | The password chosen during that export |
+| `NOTARY_KEY_P8` | Contents of an App Store Connect API key `AuthKey_XXXXXX.p8` (Users and Access → Integrations → Team Keys, role *Developer*) |
+| `NOTARY_KEY_ID` | That key's ID |
+| `NOTARY_ISSUER_ID` | The Issuer ID shown above the key list |
 
 ## Architecture
 
